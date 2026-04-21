@@ -145,12 +145,18 @@ The ten passes, in order:
 
 Output includes a Changes table showing what each pass fixed. Only passes with actual changes appear.
 
-This skill merges two open-source skills into one:
+This skill merges two open-source skills and three reference sources into one:
 
-- [**writing-clearly-and-concisely**](https://github.com/softaworks/agent-toolkit) by [@joshuadavidthomas](https://github.com/joshuadavidthomas) (via Softaworks agent-toolkit) -- Strunk's composition rules adapted from [obra/the-elements-of-style](https://github.com/obra/the-elements-of-style), plus AI vocabulary pattern detection. MIT license.
-- [**humanize-writing**](https://github.com/jpeggdev/humanize-writing) by [@jpeggdev](https://github.com/jpeggdev) -- eight-pass editing system for rewriting AI-generated prose, incorporating patterns from Wikipedia's "Signs of AI writing" article (WikiProject AI Cleanup) and the [blader/humanizer](https://github.com/blader/humanizer) project. MIT license.
+**Skills merged:**
+- [**writing-clearly-and-concisely**](https://github.com/softaworks/agent-toolkit) by [@joshuadavidthomas](https://github.com/joshuadavidthomas) (via Softaworks agent-toolkit) -- Strunk's composition rules plus AI vocabulary pattern detection. MIT license.
+- [**humanize-writing**](https://github.com/jpeggdev/humanize-writing) by [@jpeggdev](https://github.com/jpeggdev) -- eight-pass editing system for rewriting AI-generated prose. MIT license. Incorporates work from [blader/humanizer](https://github.com/blader/humanizer) (the "soul" pass philosophy and 24 Wikipedia-sourced detection patterns).
 
-The merge cut the overlap between the two and produced a single ten-pass skill that handles both clear writing and AI-tell removal together.
+**Reference sources bundled:**
+- [**The Elements of Style**](https://github.com/obra/the-elements-of-style) by William Strunk Jr. (1918, public domain) -- Markdown adaptation by [@obra](https://github.com/obra). Strunk rule citations are woven into each editing pass.
+- [**Signs of AI writing**](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) -- field guide maintained by Wikipedia's WikiProject AI Cleanup editors. Covers regression-to-the-mean theory, promotional language patterns, trailing participials, bold-header lists, and elegant variation.
+- **AI-tell word lists** -- tiered vocabulary lists (Tier 1 red flags, Tier 2 cluster words) compiled from the above sources and extended with observed model-generation patterns.
+
+The merge cut the overlap between writing-clearly-and-concisely and humanize-writing, expanded from 8 passes to 10, and threaded Strunk rule citations into each pass so the writing principles and the AI-tell detection reinforce each other.
 
 ---
 
