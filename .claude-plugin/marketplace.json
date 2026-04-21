@@ -55,6 +55,15 @@
       ]
     },
     {
+      "name": "extract-webpage",
+      "description": "Extract web pages into structured Markdown with boilerplate removal. Single pages or full-site crawls. Requires trafilatura.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/extract-webpage"
+      ]
+    },
+    {
       "name": "writing-skills",
       "description": "Bundle: clear-and-concise-humanization + explain-code",
       "source": "./",
@@ -66,13 +75,14 @@
     },
     {
       "name": "extraction-skills",
-      "description": "Bundle: extract-book + extract-study + extract-transcript",
+      "description": "Bundle: extract-book + extract-study + extract-transcript + extract-webpage",
       "source": "./",
       "strict": false,
       "skills": [
         "./skills/extract-book",
         "./skills/extract-study",
-        "./skills/extract-transcript"
+        "./skills/extract-transcript",
+        "./skills/extract-webpage"
       ]
     }
   ]

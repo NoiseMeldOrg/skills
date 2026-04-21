@@ -18,6 +18,7 @@ Install the skills you want:
 /plugin install extract-book@noisemeld-skills
 /plugin install extract-study@noisemeld-skills
 /plugin install extract-transcript@noisemeld-skills
+/plugin install extract-webpage@noisemeld-skills
 /plugin install clear-and-concise-humanization@noisemeld-skills
 /plugin install explain-code@noisemeld-skills
 ```
@@ -25,7 +26,7 @@ Install the skills you want:
 Or grab a bundle:
 
 ```
-/plugin install extraction-skills@noisemeld-skills    # all three extract skills
+/plugin install extraction-skills@noisemeld-skills    # all four extract skills
 /plugin install writing-skills@noisemeld-skills        # humanization + explain-code
 ```
 
@@ -41,6 +42,7 @@ git clone https://github.com/NoiseMeldOrg/skills.git ~/skills
 ln -s ~/skills/skills/extract-book ~/.claude/skills/
 ln -s ~/skills/skills/extract-study ~/.claude/skills/
 ln -s ~/skills/skills/extract-transcript ~/.claude/skills/
+ln -s ~/skills/skills/extract-webpage ~/.claude/skills/
 ln -s ~/skills/skills/clear-and-concise-humanization ~/.claude/skills/
 ln -s ~/skills/skills/explain-code ~/.claude/skills/
 ```
@@ -61,10 +63,10 @@ The extract skills need Python packages:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install pdfplumber youtube_transcript_api
+pip install pdfplumber youtube_transcript_api trafilatura
 ```
 
-`extract-book` and `extract-study` use `pdfplumber`. `extract-transcript` uses `youtube_transcript_api` when fetching from YouTube URLs (pasted transcripts need nothing).
+`extract-book` and `extract-study` use `pdfplumber`. `extract-transcript` uses `youtube_transcript_api` when fetching from YouTube URLs (pasted transcripts need nothing). `extract-webpage` uses `trafilatura` for fetching and content extraction.
 
 ---
 
@@ -101,6 +103,20 @@ Turns a YouTube video or podcast into a structured Markdown summary.
 Give Claude a YouTube URL, paste a raw transcript, or run `/extract-transcript https://www.youtube.com/watch?v=XXXXX`. Claude fetches the transcript and video metadata automatically, reads through the full content, and writes an organized summary with sections, key quotes as blockquotes, and a source block with clickable links.
 
 This is a reasoning task. Claude reorganizes messy spoken-word content into clear prose, preserving the speaker's arguments and evidence while cutting filler and repetition.
+
+---
+
+### extract-webpage
+
+Extracts web pages into clean Markdown with navigation, ads, and boilerplate stripped out.
+
+Give Claude a URL, or run `/extract-webpage https://example.com/article`. Claude runs a dry run to preview the detected metadata (title, author, date, word count), then extracts and post-processes: fixes the title, fills in missing metadata, and cleans up any boilerplate the script missed.
+
+For full-site crawls, add `--crawl` to discover and extract all pages on the domain. The script finds pages via sitemap or link following, filters out tag/category/login pages by default, and combines everything into one document with a table of contents. Use `--max-pages` to cap the crawl and `--delay` to control request pacing.
+
+The bundled script uses trafilatura for content extraction. It handles most static HTML sites well. JavaScript-rendered pages (React SPAs, heavy client-side rendering) and authenticated pages won't work -- the dry run shows this immediately (0 words extracted).
+
+Flags: `--dry-run` to preview, `--crawl` for multi-page, `--max-pages N` to limit crawl, `--no-links` to strip hyperlinks, `--exclude /pattern/` to filter URLs, `--no-exclude` to disable default filtering.
 
 ---
 
