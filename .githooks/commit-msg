@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Commit-msg: regenerate CHANGELOG.md from git log + this commit's message.
+# The message file path is passed as $1 by git.
+
+python3 "$(dirname "$0")/../scripts/generate_changelog.py" "$1"

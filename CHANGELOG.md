@@ -1,46 +1,93 @@
 # Changelog
 
-Version numbers follow the commit count on `main`: version `1.0.N` is the Nth commit. To find the exact code for any version:
+Version `1.0.N` = the Nth commit on `main`. To check out any version:
 
 ```bash
-git log --oneline main | head -N
+git log --oneline main   # find the commit
+git checkout <hash>      # check it out
 ```
 
 ## 1.0.9
 
-- Add auto-versioning from git commit count (mirrors rapture-ios scheme)
-- Add CHANGELOG.md
-- Document update workflow for plugin marketplace and symlink users
+Add auto-versioning from git commit count and CHANGELOG
+
+- Version 1.0.N = Nth commit on main, matching rapture-ios scheme.
+- Pre-commit hook updates marketplace.json automatically. Documents
+- update workflow for plugin marketplace and symlink users.
 
 ## 1.0.8
 
-- Expand clear-and-concise-humanization provenance (obra, WikiProject AI Cleanup, blader)
+Expand clear-and-concise-humanization provenance with all sources
+
+- Credits obra/the-elements-of-style (Strunk text), Wikipedia's
+- WikiProject AI Cleanup (signs-of-ai-writing field guide), and
+- blader/humanizer (soul pass) alongside the two primary skills.
 
 ## 1.0.7
 
-- Credit source skills: writing-clearly-and-concisely (joshuadavidthomas) and humanize-writing (jpeggdev)
+Credit source skills for clear-and-concise-humanization
+
+- Adds proper attribution to writing-clearly-and-concisely
+- (joshuadavidthomas/softaworks) and humanize-writing (jpeggdev),
+- both MIT licensed.
 
 ## 1.0.6
 
-- Add extract-webpage skill (trafilatura-based web page extraction)
-- Update extraction-skills bundle to include extract-webpage
+Add extract-webpage skill for web page to Markdown conversion
+
+- Bundled Python script uses trafilatura for content extraction with
+- automatic boilerplate removal. Supports single-page and multi-page
+- site crawls. Updated marketplace.json and extraction-skills bundle.
 
 ## 1.0.5
 
-- Rewrite README: humanize prose, add skill invocation guidance
+Rewrite README: humanize prose, add skill invocation guidance
+
+- Applied clear-and-concise-humanization passes to the documentation.
+- Added "Making skills trigger reliably" section covering description
+- optimization, when_to_use, CLAUDE.md references, paths field,
+- description budget, and direct invocation.
 
 ## 1.0.4
 
-- Document installation methods and per-skill usage
+Document installation methods and per-skill usage
+
+- README now covers:
+- - Three install methods (plugin marketplace, global symlink, project-level)
+- - Python dependency setup
+- - Per-skill documentation with invoke patterns, options, and examples
+- - Update instructions for both install methods
 
 ## 1.0.3
 
-- Allow individual skill installation alongside bundles
+Allow individual skill installation alongside bundles
+
+- Each skill is now its own installable plugin in the marketplace.
+- Bundles (writing-skills, extraction-skills) still available for
+- installing groups at once.
 
 ## 1.0.2
 
-- Add marketplace.json, README, LICENSE, .gitignore
+Add plugin marketplace support and restructure to official pattern
+
+- Restructured to match anthropics/skills convention:
+- - Skills moved under skills/ directory
+- - Added .claude-plugin/marketplace.json for plugin install support
+- - Two plugin groups: writing-skills and extraction-skills
+- - Updated README with plugin marketplace install instructions
+- - Added MIT license
+- Users can now install via:
+- /plugin marketplace add NoiseMeldOrg/skills
+- /plugin install writing-skills@noisemeld-skills
 
 ## 1.0.1
 
-- Initial commit: 5 skills (extract-book, extract-study, extract-transcript, clear-and-concise-humanization, explain-code)
+Initial commit: five custom Claude Code skills
+
+- Skills:
+- - clear-and-concise-humanization: Strunk + Wikipedia AI detection + ten-pass editing
+- - explain-code: Visual diagrams and analogies for code explanation
+- - extract-book: PDF book to structured Markdown with chapter detection
+- - extract-study: Research paper PDF to IMRaD Markdown with DOI/PMID extraction
+- - extract-transcript: YouTube/podcast transcript to structured Markdown summary
+
