@@ -145,7 +145,12 @@ The ten passes, in order:
 
 Output includes a Changes table showing what each pass fixed. Only passes with actual changes appear.
 
-This skill merges two earlier skills (`writing-clearly-and-concisely` for Strunk's rules and a separate humanization pass system) with the Wikipedia AI detection research as a third input. The merge cut the overlap and produced a single skill that handles both clear writing and AI-tell removal in one pass.
+This skill merges two open-source skills into one:
+
+- [**writing-clearly-and-concisely**](https://github.com/softaworks/agent-toolkit) by [@joshuadavidthomas](https://github.com/joshuadavidthomas) (via Softaworks agent-toolkit) -- Strunk's composition rules adapted from [obra/the-elements-of-style](https://github.com/obra/the-elements-of-style), plus AI vocabulary pattern detection. MIT license.
+- [**humanize-writing**](https://github.com/jpeggdev/humanize-writing) by [@jpeggdev](https://github.com/jpeggdev) -- eight-pass editing system for rewriting AI-generated prose, incorporating patterns from Wikipedia's "Signs of AI writing" article (WikiProject AI Cleanup) and the [blader/humanizer](https://github.com/blader/humanizer) project. MIT license.
+
+The merge cut the overlap between the two and produced a single ten-pass skill that handles both clear writing and AI-tell removal together.
 
 ---
 
