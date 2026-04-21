@@ -1,0 +1,34 @@
+{
+  "name": "noisemeld-skills",
+  "owner": {
+    "name": "NoiseMeld",
+    "email": "michael@noisemeld.com"
+  },
+  "metadata": {
+    "description": "Custom skills for document extraction, writing, and code explanation",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "writing-skills",
+      "description": "Writing and code explanation skills: clear-and-concise prose editing with AI-tell removal, and visual code explanations with diagrams and analogies",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/clear-and-concise-humanization",
+        "./skills/explain-code"
+      ]
+    },
+    {
+      "name": "extraction-skills",
+      "description": "Document extraction skills: convert PDF books, research papers, and video transcripts into structured Markdown with metadata, section detection, and cross-referencing",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/extract-book",
+        "./skills/extract-study",
+        "./skills/extract-transcript"
+      ]
+    }
+  ]
+}
