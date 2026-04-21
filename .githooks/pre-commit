@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pre-commit hook: auto-version marketplace.json from commit count.
+# Install: git config core.hooksPath .githooks
+
+export GIT_PRE_COMMIT=1
+VERSION=$(./scripts/set_version.sh)
+echo "Version: $VERSION"

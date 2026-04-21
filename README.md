@@ -245,15 +245,51 @@ Direct invocation always works, regardless of description matching. You can also
 
 ---
 
+## Versioning
+
+Version numbers track the commit count on `main`: version `1.0.N` is the Nth commit. This is automatic -- a pre-commit hook updates `marketplace.json` on every commit. No manual version bumping.
+
+To find the exact code for any version:
+
+```bash
+git log --oneline main | head -N
+```
+
+For example, version `1.0.9` corresponds to the 9th commit on main.
+
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
+
+---
+
 ## Updating
 
-**Plugin install:** Run `/plugin marketplace add NoiseMeldOrg/skills` again to refresh, then reinstall.
+### Plugin marketplace
 
-**Manual install:** Pull the repo.
+Claude Code does not notify you when plugins update. Two options:
+
+**Manual check:** Run `/plugin update <skill-name>` to pull the latest version of a specific skill, or update all installed plugins from a marketplace at once.
+
+**Auto-update:** Enable per-marketplace in Claude Code via `/plugin` > Marketplaces tab. When enabled, Claude Code checks for new versions on startup. Third-party marketplaces (like this one) have auto-update off by default -- you opt in.
+
+After updating, restart Claude Code for the new skill definitions to load.
+
+### Symlink install
+
+Pull the repo. Symlinks pick up changes immediately -- no reinstall needed.
 
 ```bash
 cd ~/skills && git pull
 ```
+
+Check the current version:
+
+```bash
+./scripts/set_version.sh --check
+```
+
+### How to tell if an update is available
+
+Watch the repo on GitHub (Settings > Watch > Releases) to get notified of new versions. Or just pull periodically -- the changelog shows what changed.
 
 ## License
 
