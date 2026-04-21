@@ -6,12 +6,57 @@
   },
   "metadata": {
     "description": "Custom skills for document extraction, writing, and code explanation",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
+      "name": "clear-and-concise-humanization",
+      "description": "Write and edit prose that is clear, forceful, and unrecognizable as machine-generated. Ten editing passes combining Strunk's composition rules with Wikipedia AI-tell detection.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/clear-and-concise-humanization"
+      ]
+    },
+    {
+      "name": "explain-code",
+      "description": "Explain code with visual ASCII diagrams, everyday analogies, step-by-step walkthroughs, and common gotchas.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/explain-code"
+      ]
+    },
+    {
+      "name": "extract-book",
+      "description": "Convert PDF books into structured Markdown with chapter detection, metadata extraction (author, publisher, ISBN, copyright), and image-page rendering. Requires pdfplumber.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/extract-book"
+      ]
+    },
+    {
+      "name": "extract-study",
+      "description": "Convert research papers (IMRaD format) into structured Markdown with DOI/PMID extraction, section detection, and preserved references. Requires pdfplumber.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/extract-study"
+      ]
+    },
+    {
+      "name": "extract-transcript",
+      "description": "Convert video and podcast transcripts into structured Markdown summaries. Accepts YouTube URLs or pasted text. Requires youtube_transcript_api.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/extract-transcript"
+      ]
+    },
+    {
       "name": "writing-skills",
-      "description": "Writing and code explanation skills: clear-and-concise prose editing with AI-tell removal, and visual code explanations with diagrams and analogies",
+      "description": "Bundle: clear-and-concise-humanization + explain-code",
       "source": "./",
       "strict": false,
       "skills": [
@@ -21,7 +66,7 @@
     },
     {
       "name": "extraction-skills",
-      "description": "Document extraction skills: convert PDF books, research papers, and video transcripts into structured Markdown with metadata, section detection, and cross-referencing",
+      "description": "Bundle: extract-book + extract-study + extract-transcript",
       "source": "./",
       "strict": false,
       "skills": [

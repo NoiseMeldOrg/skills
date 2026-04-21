@@ -12,9 +12,17 @@ In Claude Code, run:
 /plugin marketplace add NoiseMeldOrg/skills
 ```
 
-Then install the skill sets you want:
+Then install individual skills or bundles:
 
 ```
+# Individual skills
+/plugin install clear-and-concise-humanization@noisemeld-skills
+/plugin install extract-book@noisemeld-skills
+/plugin install extract-study@noisemeld-skills
+/plugin install extract-transcript@noisemeld-skills
+/plugin install explain-code@noisemeld-skills
+
+# Or install bundles
 /plugin install writing-skills@noisemeld-skills
 /plugin install extraction-skills@noisemeld-skills
 ```
