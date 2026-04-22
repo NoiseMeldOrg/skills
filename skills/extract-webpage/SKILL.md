@@ -97,23 +97,17 @@ After extraction, read the output and check:
 
 ### Step 4: File It
 
-File the document based on its content:
+Ask the user where to save it unless the project's CLAUDE.md or an existing folder convention makes it obvious. Match the filing pattern of neighboring documents if there is one.
 
-- **Health/nutrition articles**: `archive/docs/<topic>/` (match existing neighbors)
-- **Full site archives**: `archive/docs/<topic>/` with a descriptive name
-- **Reference material**: `archive/docs/<topic>/reference/`
-- **General web pages**: ask the user where they want it
-
-Filename format: `<Descriptive Title> - <Author or Site>.md`
+A reasonable default filename is `<Descriptive Title> - <Author or Site>.md`.
 
 Examples:
-- `Glyphosate Facts - Full Site.md`
 - `Metabolic Health Framework - Peter Attia.md`
-- `Statin Side Effects Overview - People's Pharmacy.md`
+- `Glyphosate Facts - Full Site.md`
 
 ### Step 5: Cross-Reference
 
-If the extracted page references studies, books, or videos already in the repo, add links in both directions. If it cites a study worth extracting, offer to run `extract-study` on it.
+If the extracted page references studies, books, or videos already extracted in the project, add links in both directions. If it cites a study worth extracting, offer to run `extract-study` on it.
 
 ### Step 6: Commit
 

@@ -106,18 +106,18 @@ After the vision pass, read the first 20-30 lines of the output and fix:
 
 ### Step 6: File It
 
-**Location:** Books live in `archive/docs/books/` regardless of topic. Topic-specific subdirs are not used for books in this repo.
+**Location:** Ask the user where to save it unless the project's CLAUDE.md or an existing folder of book extractions makes it obvious. Match the filing pattern of neighboring books if there is one.
 
-**Filename:** Use `<Title> - <Author>.md` with a clean, human-readable title (e.g., `Toxic Superfoods - Sally K Norton.md`, `Fix Your Diet Fix Your Life - Dr Ken Berry.md`). Drop subtitles from the filename if the title is long; keep the full title + subtitle inside the `# H1` heading.
+**Filename:** A reasonable default is `<Title> - <Author>.md` with a clean, human-readable title (e.g., `Toxic Superfoods - Sally K Norton.md`). Drop subtitles from the filename if the title is long; keep the full title + subtitle inside the `# H1` heading.
 
-**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same title, same directory) so the pair is discoverable under a single search. Historical files in this repo include `_OceanofPDF.com_<Title>_-_<Author>.pdf` naming — when processing a new book, do a `git mv` to the clean `<Title> - <Author>.pdf` form to match the MD and match the newer convention. The `.gitignore` already excludes `._*` macOS metadata siblings.
+**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same title, same directory) so the pair is discoverable under a single search. Use `git mv` if the PDF is already tracked.
 
 ### Step 7: Cross-Reference Related Docs
 
-If the book references or is referenced by other material in the repo:
+If the book references or is referenced by other material already in the project:
 
-1. **Studies the book cites heavily** — if a cited study is already in `archive/docs/studies/`, add a reference link in the book's front matter or relevant chapter.
-2. **Video transcripts by the same author** — add "See also" links pointing to their transcripts in `archive/docs/cardiovascular/videos/` (or the relevant topic subdir).
+1. **Studies the book cites heavily** — if a cited study is already extracted in the project, add a reference link in the book's front matter or relevant chapter.
+2. **Video transcripts by the same author** — add "See also" links pointing to any existing transcript extractions.
 3. **Reference docs that draw on the book** — when a protocol or reference doc leans on the book, link both directions so the source is traceable.
 
 ### Step 8: Commit

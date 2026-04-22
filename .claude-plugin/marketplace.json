@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Custom skills for document extraction and writing",
-    "version": "1.0.11"
+    "version": "1.0.12"
   },
   "plugins": [
     {

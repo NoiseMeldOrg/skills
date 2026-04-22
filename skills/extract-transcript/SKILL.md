@@ -86,7 +86,7 @@ Use this exact structure:
 **Date:** [if known]
 **Topic:** [one-line description]
 **Key references cited:** [studies, guidelines, books mentioned — if any]
-**Published paper:** [if the video presents or discusses a specific published study — include author, journal, year, DOI, and a relative-path link to the study MD if it's already in `archive/docs/studies/`]
+**Published paper:** [if the video presents or discusses a specific published study — include author, journal, year, DOI, and a relative-path link to the study MD if one exists locally]
 
 ---
 
@@ -110,20 +110,6 @@ for particularly strong or quotable statements). Use subheadings if a section is
 
 ---
 
-## Relevance to Michael's Situation
-
-[Connect the content to Michael's specific case: CAC 1,806, metabolic health scorecard (4/5),
-pending CCTA May 19, family history (father CAD since 50s, MI at 80), statin decision,
-pending labs (Lp(a), hsCRP, ApoB, fasting insulin), carnivore diet, Dr. Baker relationship.
-
-Be specific — cite actual numbers, pending tests, or open questions from other documents.
-Note where the speaker's claims are testable vs. speculative.
-
-If the transcript isn't relevant to Michael's cardiovascular case, say so and note what
-topic it does relate to.]
-
----
-
 ## Source
 
 **Video/Episode:** "[full title]"
@@ -132,23 +118,19 @@ topic it does relate to.]
 **Resources mentioned:** [links, books, tools referenced — if any]
 ```
 
+If the user's project CLAUDE.md defines a personal context to evaluate transcripts against (a medical case, a research focus, a product decision), add a final section before the Source block that connects the speaker's claims to that context. Be specific — cite numbers, open questions, and note where claims are testable vs. speculative. Skip this section when no project context applies.
+
 ### Step 4: File It
 
-Save to `archive/docs/cardiovascular/videos/` (or the appropriate topic subdir's `videos/` folder) with the filename format:
+Ask the user where to save it unless the project's CLAUDE.md or an existing folder convention makes it obvious. Match the filing pattern of neighboring documents if there is one. A reasonable default filename is:
 
 `[Short Title] - [Speaker Name].md`
-
-Examples:
-- `Baby Aspirin for Primary Prevention - Dr Ken Berry.md`
-- `5 Year Carnivore Shocking CAC Increase - Dr Shawn Baker.md`
-
-Do not place transcripts at the `archive/docs/cardiovascular/` root — all video summaries live in the `videos/` subdir. Match existing neighbors.
 
 ### Step 5: Cross-Reference Related Docs
 
 If the speaker discusses a published paper:
 
-1. **Check if the paper is already in `archive/docs/studies/`.** If yes, add the "Published paper" metadata field with a relative-path link (e.g., `../../studies/Koutnik 2024 - Long-term Ketogenic Diet T1D Case Report.md` from a file in `cardiovascular/videos/`).
+1. **Check the project for an existing extraction of that paper.** If one exists, add the "Published paper" metadata field with a relative-path link to it.
 2. **If not, offer to extract it** using `extract-study` so both live in the repo and link to each other.
 3. **Add the reverse link** in the study MD — open it and add a "See also" line pointing back to the transcript. Bidirectional links keep the pair discoverable from either side.
 
@@ -164,8 +146,7 @@ Add and commit with a descriptive message.
 - Preserve the speaker's actual arguments and reasoning, not just conclusions.
 - Use `> blockquotes` for particularly strong or memorable direct quotes.
 - If the speaker cites a study, include enough detail to find it (author, journal, year if mentioned).
-- The "Relevance to Michael's Situation" section should be honest — if the speaker is speculating or the evidence is weak, say so. If the speaker is not a physician, note that.
-- Do not use bold or em dashes in the Relevance section if the document will be shared with family (per user preference for personal-voice documents). For clinical reference docs that stay in the repo, standard markdown formatting is fine.
+- If you write a project-specific relevance section, be honest — if the speaker is speculating or the evidence is weak, say so. If the speaker is not credentialed in the field they're discussing, note that.
 
 ## What This Skill Is NOT
 

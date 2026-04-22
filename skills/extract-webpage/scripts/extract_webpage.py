@@ -12,12 +12,22 @@ Dry run (preview metadata only):
 """
 
 import argparse
+import re
 import sys
 import time
 from urllib.parse import urljoin, urlparse
 
 import trafilatura
 from trafilatura.settings import use_config
+
+
+def slugify(text: str) -> str:
+    """Match GitHub's heading-anchor scheme: lowercase, drop non-word chars
+    except spaces and hyphens, collapse spaces to hyphens."""
+    s = text.lower()
+    s = re.sub(r"[^\w\s-]", "", s)
+    s = re.sub(r"\s+", "-", s.strip())
+    return s
 
 
 def make_config():
@@ -219,7 +229,7 @@ def build_multi_page_markdown(start_url, pages, site_metadata):
     lines.append("")
     for i, (url, content, meta) in enumerate(pages, 1):
         page_title = meta.title if meta and meta.title else url
-        anchor = page_title.lower().replace(" ", "-").replace(":", "")
+        anchor = slugify(page_title)
         lines.append(f"{i}. [{page_title}](#{anchor})")
     lines.append("")
     lines.append("---")

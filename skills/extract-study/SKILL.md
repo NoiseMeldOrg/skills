@@ -16,7 +16,7 @@ Convert research papers into clean Markdown with a metadata header, IMRaD sectio
 
 - User has a study/paper PDF they want in Markdown
 - User drops a PMC, PubMed, or DOI link and a PDF path
-- User wants to add a paper to the health repo for reference
+- User wants to add a paper to a project for reference
 - User has an existing extraction that's missing metadata or section structure
 
 ## Setup
@@ -35,7 +35,7 @@ source .venv/bin/activate && pip install pdfplumber 2>/dev/null
 source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_study_pdf.py "<path-to-pdf>" --dry-run
 ```
 
-This prints the detected metadata (title, authors, journal, year, DOI) and the list of sections found. Review with the user before extracting.
+This prints the detected metadata (title, year, DOI, PMID/PMCID) and the list of sections found. Authors and journal are not auto-detected — fill those in by hand from the PDF's first page after extraction. Review with the user before extracting.
 
 ### Step 2: Extract
 
@@ -44,8 +44,6 @@ source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_study_pdf.py "<p
 ```
 
 If `-o` is omitted, output goes next to the PDF.
-
-For papers where key data lives in figures/charts (Kaplan-Meier curves, forest plots), add `--render-images` to capture image-heavy pages for a vision pass — same flow as `extract-book`.
 
 ### Step 3: Post-Process
 
@@ -61,11 +59,11 @@ After extraction, read the top of the file and verify:
 
 ### Step 4: File it
 
-**Location:** The dominant convention in this repo is a flat `archive/docs/studies/` directory regardless of topic (cardiovascular, nutrition, metabolic — all go in the flat dir). A topic-specific `archive/docs/<topic>/studies/` subdirectory is only used when the topic is truly domain-separate (e.g., `archive/docs/cognitive/studies/` for Alzheimer/dementia research). When in doubt, use the flat `archive/docs/studies/` — match existing neighbors, don't create new topic subdirs for cardiovascular/nutrition studies.
+**Location:** Ask the user where to save it unless the project's CLAUDE.md or an existing folder of study extractions makes it obvious. Match the filing pattern of neighboring studies if there is one.
 
-**Filename:** Use `<FirstAuthor> <Year> - <Short Title>.md` (e.g., `Dugani 2021 - Lipid Markers Women's Health Study.md`).
+**Filename:** A reasonable default is `<FirstAuthor> <Year> - <Short Title>.md` (e.g., `Dugani 2021 - Lipid Markers Women's Health Study.md`).
 
-**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same short title, same directory). A repo-wide `git mv luae102.pdf "Koutnik 2024 - Long-term Ketogenic Diet T1D Case Report.pdf"` keeps PDF and MD paired and makes both discoverable under the same search. The `.gitignore` already excludes `._*` macOS metadata siblings — no action needed on those.
+**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same short title, same directory) so the PDF and MD are paired and discoverable under one search. Use `git mv` if the PDF is already tracked.
 
 ## Target Output Format
 

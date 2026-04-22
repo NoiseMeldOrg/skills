@@ -87,9 +87,9 @@ Converts a research paper PDF into Markdown with IMRaD sections, metadata, and r
 
 Give Claude a PDF (with an optional PubMed or DOI link for context), or run `/extract-study path/to/paper.pdf`. Claude runs a dry run, extracts, then verifies the title, authors, and DOI, writes 3-6 key findings bullets, and spot-checks tables for column-merge artifacts.
 
-The script detects standard section headings (Abstract, Methods, Results, Discussion, Conclusion, References) and pulls DOI, PMID/PMCID, title, authors, journal, and year from the first pages.
+The script detects standard section headings (Abstract, Methods, Results, Discussion, Conclusion, References) and pulls title, year, DOI, and PMID/PMCID from the first pages. Authors and journal are filled in by hand during the post-process step.
 
-Flags: `--dry-run` to preview, `--layout` for two-column PDFs, `--render-images` for figures and charts, `-o path.md` to set the output path.
+Flags: `--dry-run` to preview, `--layout` for two-column PDFs, `-o path.md` to set the output path.
 
 ---
 
