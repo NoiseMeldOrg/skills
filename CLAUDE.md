@@ -39,3 +39,18 @@ Editing an extract script: each `extract_*.py` supports `--dry-run` for preview 
 - The extract skills follow a "dry run, then extract, then post-process with Claude's judgment" pattern. Don't try to make the scripts perfect — the SKILL.md prose tells Claude to clean up what the script misses (titles, metadata, table artifacts). Move logic into the script only when it's deterministic enough to not need review.
 - Skill descriptions and `when_to_use` fields are functional code, not docs. Changing wording changes trigger behavior. The README's "Making skills trigger reliably" section explains the model.
 - No emoji in skill content or scripts (per the global writing rules in `~/.claude/CLAUDE.md`).
+
+## Distribution channels
+
+Three install paths work today, no action needed to keep them working:
+- **Claude Code plugin marketplace** — users run `/plugin marketplace add NoiseMeldOrg/skills` then `/plugin install <name>@noisemeld-skills`. Reads `.claude-plugin/marketplace.json`, pins via its `version` field.
+- **`npx skills add`** — users run `npx skills add NoiseMeldOrg/skills@<skill> -g -y`. The CLI clones at HEAD and symlinks into `~/.claude/skills/`. No registry submission — any public repo with the right layout works.
+- **Symlink install** — documented in README; `ln -s` from a local clone into `~/.claude/skills/`. Updates via `git pull`.
+
+**Anthropic's plugin directory** (`clau.de/plugin-directory-submission`) is a separate path that requires per-plugin submission, not per-marketplace. Each skill would need its own `.claude-plugin/plugin.json`, standalone README, and to pass Anthropic's review for the "Verified" badge. This is significant restructuring — five marketplace entries → five separately submittable plugins. Do not pursue until there's usage signal that justifies the work; the marketplace install path already covers the same users.
+
+**mcpmarket.com** likely auto-crawls public plugin marketplaces, but the submission mechanism is undocumented from what's been verified. Let it index organically.
+
+## Releases
+
+Every commit bumps the version via the hook, but only cut a GitHub release at meaningful milestones (public launch, new skill, breaking change) — never on every commit. The marketplace's `version` field is what `/plugin update` reads; Git tags are only useful for users who want to pin to a specific revision. Use `gh release create v1.0.N` with the changelog entry for that version as the body.

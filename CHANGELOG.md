@@ -7,6 +7,27 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.12
+
+Prepare skills for public release
+
+- - Strip personal medical case from extract-transcript SKILL; relevance
+- section is now opt-in via project CLAUDE.md
+- - Genericize archive/docs filing paths in all four extract skills
+- - Drop --render-images claim from extract-study (script never implemented)
+- - Soften extract-study metadata claim: authors and journal are manual
+- - Fix extract-webpage TOC anchors with a GitHub-compatible slugify
+- - Add CLAUDE.md describing the marketplace, automation, and hook setup
+
+## 1.0.11
+
+Remove explain-code skill in favor of third-party version
+
+- The third-party explain-code skill (zbruhnke/claude-code-starter) is more
+- rigorous with anti-hallucination rules, structured output, and execution
+- tracing. Removed our lighter version and the now-redundant writing-skills
+- bundle from the marketplace.
+
 ## 1.0.10
 
 Auto-generate CHANGELOG from git log via commit-msg hook
