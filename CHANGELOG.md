@@ -7,6 +7,15 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.10
+
+Auto-generate CHANGELOG from git log via commit-msg hook
+
+- CHANGELOG.md is now built from commit history at commit time.
+- The commit-msg hook includes the current commit's message, so the
+- CHANGELOG is never behind the actual version. Replaces the manually
+- maintained CHANGELOG.
+
 ## 1.0.9
 
 Add auto-versioning from git commit count and CHANGELOG

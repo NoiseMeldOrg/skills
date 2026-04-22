@@ -5,8 +5,8 @@
     "email": "michael@noisemeld.com"
   },
   "metadata": {
-    "description": "Custom skills for document extraction, writing, and code explanation",
-    "version": "1.0.10"
+    "description": "Custom skills for document extraction and writing",
+    "version": "1.0.11"
   },
   "plugins": [
     {
@@ -16,15 +16,6 @@
       "strict": false,
       "skills": [
         "./skills/clear-and-concise-humanization"
-      ]
-    },
-    {
-      "name": "explain-code",
-      "description": "Explain code with visual ASCII diagrams, everyday analogies, step-by-step walkthroughs, and common gotchas.",
-      "source": "./",
-      "strict": false,
-      "skills": [
-        "./skills/explain-code"
       ]
     },
     {
@@ -61,16 +52,6 @@
       "strict": false,
       "skills": [
         "./skills/extract-webpage"
-      ]
-    },
-    {
-      "name": "writing-skills",
-      "description": "Bundle: clear-and-concise-humanization + explain-code",
-      "source": "./",
-      "strict": false,
-      "skills": [
-        "./skills/clear-and-concise-humanization",
-        "./skills/explain-code"
       ]
     },
     {

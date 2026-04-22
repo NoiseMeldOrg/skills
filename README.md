@@ -1,6 +1,6 @@
 # NoiseMeld Skills
 
-Claude Code skills for extracting documents, editing prose, and explaining code. Built on the [Agent Skills](https://agentskills.io) open standard.
+Claude Code skills for extracting documents and editing prose. Built on the [Agent Skills](https://agentskills.io) open standard.
 
 ## Installation
 
@@ -20,14 +20,12 @@ Install the skills you want:
 /plugin install extract-transcript@noisemeld-skills
 /plugin install extract-webpage@noisemeld-skills
 /plugin install clear-and-concise-humanization@noisemeld-skills
-/plugin install explain-code@noisemeld-skills
 ```
 
 Or grab a bundle:
 
 ```
 /plugin install extraction-skills@noisemeld-skills    # all four extract skills
-/plugin install writing-skills@noisemeld-skills        # humanization + explain-code
 ```
 
 Plugin skills are namespaced (`/noisemeld-skills:extract-book`) and available in every project.
@@ -44,7 +42,6 @@ ln -s ~/skills/skills/extract-study ~/.claude/skills/
 ln -s ~/skills/skills/extract-transcript ~/.claude/skills/
 ln -s ~/skills/skills/extract-webpage ~/.claude/skills/
 ln -s ~/skills/skills/clear-and-concise-humanization ~/.claude/skills/
-ln -s ~/skills/skills/explain-code ~/.claude/skills/
 ```
 
 Pull the repo to update. Symlinks pick up changes immediately.
@@ -157,16 +154,6 @@ This skill merges two open-source skills and three reference sources into one:
 - **AI-tell word lists** -- tiered vocabulary lists (Tier 1 red flags, Tier 2 cluster words) compiled from the above sources and extended with observed model-generation patterns.
 
 The merge cut the overlap between writing-clearly-and-concisely and humanize-writing, expanded from 8 passes to 10, and threaded Strunk rule citations into each pass so the writing principles and the AI-tell detection reinforce each other.
-
----
-
-### explain-code
-
-Explains code with visual diagrams and everyday analogies.
-
-Ask "how does this work?" or run `/explain-code path/to/file.ts`. Claude produces an analogy comparing the code to something familiar, an ASCII diagram of the flow or structure, a step-by-step walk-through, and a section on common mistakes.
-
-No dependencies. Works with any language.
 
 ---
 
