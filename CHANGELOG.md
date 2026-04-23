@@ -7,6 +7,15 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.13
+
+Document distribution channels and release strategy in CLAUDE.md
+
+- - Cover the three working install paths (plugin marketplace, npx skills, symlink)
+- - Note the Anthropic plugin directory requires per-plugin restructuring; defer
+- - Note mcpmarket likely auto-crawls; let it index organically
+- - Releases only at milestones, not every commit
+
 ## 1.0.12
 
 Prepare skills for public release

@@ -1,12 +1,24 @@
 # NoiseMeld Skills
 
-Claude Code skills for extracting documents and editing prose. Built on the [Agent Skills](https://agentskills.io) open standard.
+Agent skills for extracting documents and editing prose. Built on the [Agent Skills](https://agentskills.io) open standard, so they install cleanly into Claude Code, Cursor, Gemini CLI, Goose, OpenCode, Windsurf, and other compatible agents.
 
 ## Installation
 
-### Plugin marketplace (recommended)
+### Skills CLI (cross-agent, recommended)
 
-Register the marketplace in Claude Code:
+One install command, every supported agent picks it up:
+
+```bash
+npx skills add https://github.com/NoiseMeldOrg/skills --skill extract-book
+```
+
+Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, or `clear-and-concise-humanization`. Add `-g` to install globally, or omit for project-only.
+
+Update later with `npx skills update`. List installed skills with `npx skills list`.
+
+### Claude Code plugin marketplace
+
+Register the marketplace once:
 
 ```
 /plugin marketplace add NoiseMeldOrg/skills
