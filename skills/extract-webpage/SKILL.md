@@ -99,11 +99,13 @@ After extraction, read the output and check:
 
 Ask the user where to save it unless the project's CLAUDE.md or an existing folder convention makes it obvious. Match the filing pattern of neighboring documents if there is one.
 
-A reasonable default filename is `<Descriptive Title> - <Author or Site>.md`.
+**Filename:** Lowercase kebab-case — `<author-or-site>-<short-slug>.md`.
 
-Examples:
-- `Metabolic Health Framework - Peter Attia.md`
-- `Glyphosate Facts - Full Site.md`
+- **`<author-or-site>`** is the named author when available, otherwise the site brand. "Peter Attia" → `peter-attia`. When no named author, use the domain brand (e.g., `glyphosate-facts`).
+- **`<short-slug>`** is a 3–6 word descriptive title. Keep the full page title in the `# H1` heading inside the file.
+- **Normalize names:** strip to ASCII, lowercase, replace spaces with `-`, drop middle initials and apostrophes.
+
+Examples: `peter-attia-metabolic-health-framework.md`, `glyphosate-facts-full-site.md`.
 
 ### Step 5: Cross-Reference
 

@@ -7,6 +7,24 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.15
+
+Enrich extract-transcript with full video metadata and better defaults
+
+- Rewrite get_transcript.py to emit a JSON bundle containing description,
+- duration, upload date, chapters, and a timestamped transcript alongside
+- the plain-text transcript. Prefer yt-dlp when installed; fall back to
+- oembed plus YouTube watch-page scraping so the skill works out of the box.
+- Keep --plain flag for the legacy text-only output.
+- Update SKILL.md to use the richer bundle: chapter titles become section
+- scaffolding, timestamped segments become quote anchors back into the
+- video, and description is treated as the primary source for disambiguating
+- product names and resource links. Add a first-class "Transcription
+- uncertainties" block for proper nouns Claude can't verify, split the
+- Step 3 template into argument and tutorial modes, add Published/Runtime
+- metadata fields, and default output filing to the session's starting
+- directory (with a guard that asks before dumping notes into a code repo).
+
 ## 1.0.14
 
 Broaden README to reflect cross-agent install via skills CLI

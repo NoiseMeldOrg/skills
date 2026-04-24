@@ -155,7 +155,15 @@ If the user's project CLAUDE.md or user-level memory defines a personal context 
 
 **Guard against dumping notes into a code repo.** If the session started in a git repository that has no existing transcript-like docs (no `transcripts/` folder, no sibling `.md` files that look like prior transcripts), ask the user where to save before writing. It's much cheaper to ask once than to write into the wrong place and pollute a tracked repo.
 
-**Filename default:** `[Short Title] - [Speaker Name].md`. Match an existing filename pattern in the target folder if one is obvious.
+**Filename:** Lowercase kebab-case — `<speaker>-<short-slug>.md`.
+
+- **`<speaker>`** is the speaker's own name, not the channel brand. Tom Solid (channel "ICOR with Tom | AI Productivity") → `tom-solid`. Fall back to the channel handle only when no person is named.
+- **`<short-slug>`** is a 3–6 word descriptive title, max ~60 chars total. Keep the full video title in the `# H1` heading inside the file.
+- **Normalize names:** strip to ASCII, lowercase, replace spaces with `-`, drop middle initials. "Chris Raroque" → `chris-raroque`. "Mendoza-López" → `mendoza-lopez`.
+
+Examples: `tom-solid-note-taking-apps.md`, `chris-raroque-custom-agent-v2.md`.
+
+Match an existing filename pattern in the target folder if one is obvious; the kebab default is the fallback.
 
 ### Step 5: Cross-Reference Related Docs
 

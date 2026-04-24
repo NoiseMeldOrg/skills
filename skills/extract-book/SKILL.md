@@ -108,9 +108,15 @@ After the vision pass, read the first 20-30 lines of the output and fix:
 
 **Location:** Ask the user where to save it unless the project's CLAUDE.md or an existing folder of book extractions makes it obvious. Match the filing pattern of neighboring books if there is one.
 
-**Filename:** A reasonable default is `<Title> - <Author>.md` with a clean, human-readable title (e.g., `Toxic Superfoods - Sally K Norton.md`). Drop subtitles from the filename if the title is long; keep the full title + subtitle inside the `# H1` heading.
+**Filename:** Lowercase kebab-case — `<author>-<short-title>.md`.
 
-**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same title, same directory) so the pair is discoverable under a single search. Use `git mv` if the PDF is already tracked.
+- **`<author>`** is the author's name, normalized (drop middle initials). "Sally K Norton" → `sally-norton`.
+- **`<short-title>`** is the book's main title, 3–6 words. Drop the subtitle — keep the full title + subtitle in the `# H1` heading inside the file.
+- **Normalize names:** strip to ASCII, lowercase, replace spaces with `-`, drop apostrophes/accents. "Mendoza-López" → `mendoza-lopez`.
+
+Example: `sally-norton-toxic-superfoods.md`.
+
+**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same kebab slug, same directory, `.pdf` extension) so the pair is discoverable under a single search. Use `git mv` if the PDF is already tracked.
 
 ### Step 7: Cross-Reference Related Docs
 

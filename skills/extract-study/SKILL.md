@@ -61,9 +61,16 @@ After extraction, read the top of the file and verify:
 
 **Location:** Ask the user where to save it unless the project's CLAUDE.md or an existing folder of study extractions makes it obvious. Match the filing pattern of neighboring studies if there is one.
 
-**Filename:** A reasonable default is `<FirstAuthor> <Year> - <Short Title>.md` (e.g., `Dugani 2021 - Lipid Markers Women's Health Study.md`).
+**Filename:** Lowercase kebab-case — `<firstauthor>-<year>-<short-slug>.md`.
 
-**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same short title, same directory) so the PDF and MD are paired and discoverable under one search. Use `git mv` if the PDF is already tracked.
+- **`<firstauthor>`** is the first author's surname only (strip initials and "et al"). "Dugani SB" → `dugani`.
+- **`<year>`** is the publication year.
+- **`<short-slug>`** is a 3–6 word descriptive title. Keep the full paper title in the `# H1` heading inside the file.
+- **Normalize names:** strip to ASCII, lowercase, drop apostrophes/accents. "O'Brien" → `obrien`, "Mendoza-López" → `mendoza-lopez`.
+
+Example: `dugani-2021-lipid-markers-womens-health.md`.
+
+**PDF handling:** Rename the source PDF to match the Markdown filename exactly (same kebab slug, same directory, `.pdf` extension) so the PDF and MD are paired and discoverable under one search. Use `git mv` if the PDF is already tracked.
 
 ## Target Output Format
 
