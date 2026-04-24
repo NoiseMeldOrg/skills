@@ -7,6 +7,15 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.14
+
+Broaden README to reflect cross-agent install via skills CLI
+
+- These skills follow the Agent Skills standard, so they install into
+- Cursor, Gemini CLI, Goose, OpenCode, Windsurf, and others — not only
+- Claude Code. Lead with the npx skills install path now that it's the
+- broadest entry point.
+
 ## 1.0.13
 
 Document distribution channels and release strategy in CLAUDE.md
