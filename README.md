@@ -290,6 +290,12 @@ Check the current version:
 
 Watch the repo on GitHub (Settings > Watch > Releases) to get notified of new versions. Or just pull periodically -- the changelog shows what changed.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, local testing, the version/changelog hooks, commit-message conventions, and how to add a new skill.
+
+---
+
 ## Related skills
 
 Skills maintained outside this repo that pair well with it:

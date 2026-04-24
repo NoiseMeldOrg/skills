@@ -39,6 +39,8 @@ Editing an extract script: each `extract_*.py` supports `--dry-run` for preview 
 - The extract skills follow a "dry run, then extract, then post-process with Claude's judgment" pattern. Don't try to make the scripts perfect — the SKILL.md prose tells Claude to clean up what the script misses (titles, metadata, table artifacts). Move logic into the script only when it's deterministic enough to not need review.
 - Skill descriptions and `when_to_use` fields are functional code, not docs. Changing wording changes trigger behavior. The README's "Making skills trigger reliably" section explains the model.
 - No emoji in skill content or scripts (per the global writing rules in `~/.claude/CLAUDE.md`).
+- Put bundled domain knowledge a skill cites by path in `skills/<name>/references/<topic>.md`. Keeps the SKILL.md prose lean and delegates detail to reference files — easier to maintain, and Claude loads them only when the skill's prose tells it to. Currently used by `clear-and-concise-humanization/references/` (Strunk, signs-of-ai-writing, tiered AI-tell word lists). Good candidates to extend if their SKILL.md prose starts getting heavy: `extract-study` (IMRaD structure, column-bleed heuristics), `extract-book` (chapter-detection patterns).
+- Output filenames produced by the extract skills are lowercase kebab-case, identifier-first (e.g., `dugani-2021-lipid-markers-womens-health.md`). Each skill's SKILL.md documents the exact pattern; keep new skills consistent.
 
 ## Distribution channels
 

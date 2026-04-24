@@ -7,6 +7,17 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.17
+
+Add Related skills section pointing to vibe-security
+
+- Add a Related skills section to README pointing at Chris Raroque's
+- vibe-security skill, which audits AI-generated code for common
+- security vulnerabilities. Complementary to this repo's extraction
+- and prose skills and installs through the same Skills CLI, so
+- pointing users at it costs nothing and expands what they can do
+- in one install pass.
+
 ## 1.0.16
 
 Standardize extract-* filenames on lowercase kebab-case
