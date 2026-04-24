@@ -290,6 +290,20 @@ Check the current version:
 
 Watch the repo on GitHub (Settings > Watch > Releases) to get notified of new versions. Or just pull periodically -- the changelog shows what changed.
 
+## Related skills
+
+Skills maintained outside this repo that pair well with it:
+
+- **[vibe-security](https://github.com/raroque/vibe-security-skill)** by [Chris Raroque](https://github.com/raroque) and Aloa — audits AI-generated code for common security vulnerabilities: hardcoded secrets, missing row-level security, client-submitted prices, tokens stored in localStorage, and six more categories. Covers secrets, database security, auth, rate limiting, payments, mobile, AI/LLM integration, deployment, and data access, each with before/after examples. MIT licensed. Works with Claude Code and OpenAI Codex.
+
+  ```bash
+  npx skills add https://github.com/raroque/vibe-security-skill --skill vibe-security
+  ```
+
+The Skills CLI handles both repos identically, so external skills install alongside these without conflict and update together via `npx skills update`.
+
+---
+
 ## License
 
 MIT

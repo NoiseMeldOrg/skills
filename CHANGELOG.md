@@ -7,6 +7,25 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.16
+
+Standardize extract-* filenames on lowercase kebab-case
+
+- Align the filename guidance across all four extraction skills
+- (extract-transcript, extract-study, extract-book, extract-webpage)
+- on the same pattern: lowercase kebab-case, identifier-first,
+- short slug, full original title preserved in the file's H1.
+- Identifier is whatever names the creator for the content type —
+- speaker for transcripts, firstauthor+year for studies, author
+- for books, author-or-site for webpages. Each SKILL.md now
+- spells out the normalization rules (ASCII, lowercase, drop
+- middle initials, strip apostrophes/accents) and gives a
+- worked example.
+- Keeps the marketplace's extraction skills visually and
+- behaviorally consistent, avoids URL-encoded spaces in
+- cross-references between files, and makes the output
+- terminal-friendly without quoting.
+
 ## 1.0.15
 
 Enrich extract-transcript with full video metadata and better defaults
