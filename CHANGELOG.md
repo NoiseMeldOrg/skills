@@ -7,6 +7,28 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.22
+
+Fix two dry-run flag-handling issues in extract-webpage
+
+- Honor --render in --dry-run mode. Previously dry_run() unconditionally forced render="never" for the auto fetcher to keep previews fast, which silently ignored an explicit --render. Now --render and --no-render are preserved when set; the fast-path skip only applies when render is at its default of "auto".
+- Suppress the "extraction will continue into Playwright" advisory when Playwright won't actually run during real extraction. The message now fires only when Playwright would be invoked (--fetcher playwright, or auto without --no-render); previously it appeared even with --no-render or --fetcher curl/requests, contradicting the user's flags.
+- No behavior change for default invocations, --crawl, or any non-dry-run extraction path.
+
+## 1.0.21
+
+Harden extract-webpage against Cloudflare and JS-rendered docs sites
+
+- - Add curl-based fetcher (fetch_via_curl) that bypasses the TLS-fingerprint block Cloudflare applies to the Python requests library. Mintlify, GitBook, Docusaurus v3, and Nextra sites now extract via static fetch instead of falling through to Playwright.
+- - Change Playwright default wait condition from networkidle to domcontentloaded with a brief content-selector poll. Mintlify-style SPAs keep long-lived analytics websockets open so networkidle never fires and Playwright timed out at 30s with no content; domcontentloaded sidesteps that. networkidle is kept as a last-resort step in the cascade.
+- - Reorder fetch_and_extract as a cascade: trafilatura.fetch_url -> curl -> Playwright(domcontentloaded) -> Playwright(networkidle). Returns the first result clearing the 50-word threshold; falls back to the best sub-threshold result. Most pages succeed at step 1 or 2 so Playwright is invoked only for genuine SPAs.
+- - Add --fetcher {auto,requests,curl,playwright} to force a specific fetcher and --wait-until {domcontentloaded,load,networkidle} to override the Playwright wait condition.
+- - Add a curl-based sitemap fallback to discover_pages. trafilatura.sitemaps.sitemap_search uses requests internally and is blocked by Cloudflare; the fallback fetches /sitemap.xml (and common variants) via curl and expands sitemap-indexes one level. docs.dune.com discovery now finds 1425 URLs that trafilatura returned 0 for.
+- - Make crawl link discovery cascade through curl too, so JS-only fallback to Playwright doesn't fire when curl can supply the start page's links.
+- - Update dry_run to walk the static portion of the cascade and report which fetcher succeeded.
+- - Update SKILL.md to document the cascade, the new flags, and to soften the Cloudflare and JS-rendered limitations now that the cascade handles most cases.
+- Verified end-to-end against docs.dune.com (Mintlify+Cloudflare; 183 URLs discovered post-exclude, sample crawl extracts cleanly without Playwright), docs.anthropic.com (curl path), and en.wikipedia.org/wiki/Bitcoin (no regression on plain HTML).
+
 ## 1.0.20
 
 Add Readability fallback and path-scoped crawl to extract-webpage

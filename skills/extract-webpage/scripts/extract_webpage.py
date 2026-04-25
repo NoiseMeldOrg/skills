@@ -601,12 +601,16 @@ def dry_run(url, crawl=False, render="auto", scope=True, fetcher="auto",
     print(f"URL: {url}")
     print()
 
-    # Walk the static-only portion of the cascade for the preview. Skipping
-    # Playwright keeps the dry run fast; the Limitations note below tells the
-    # user what would happen during real extraction.
+    # Walk the static-only portion of the cascade for the preview by default
+    # -- skipping Playwright keeps the dry run fast. But honor the user's
+    # explicit --render or --no-render choice, since the whole point of those
+    # flags is to control whether the browser runs.
     plan_fetcher = fetcher if fetcher != "auto" else "auto"
-    plan = _build_fetch_plan(plan_fetcher,
-                             render="never" if plan_fetcher == "auto" else render,
+    if plan_fetcher == "auto" and render == "auto":
+        effective_render = "never"
+    else:
+        effective_render = render
+    plan = _build_fetch_plan(plan_fetcher, render=effective_render,
                              wait_until=wait_until)
 
     downloaded = None
@@ -644,7 +648,14 @@ def dry_run(url, crawl=False, render="auto", scope=True, fetcher="auto",
     print(f"Words:       {word_count}")
     print(f"Content:     {'Yes' if content else 'No extractable content'}")
 
-    if word_count < RENDER_FALLBACK_THRESHOLD:
+    # Only advise about the Playwright fallback when it would actually run
+    # during real extraction. With --no-render or --fetcher requests/curl,
+    # the cascade stops at the static fetcher and the message would mislead.
+    playwright_in_real_extraction = (
+        fetcher == "playwright"
+        or (fetcher == "auto" and render != "never")
+    )
+    if word_count < RENDER_FALLBACK_THRESHOLD and playwright_in_real_extraction:
         print()
         print("Page looks sparse or JS-rendered. Extraction will continue the")
         print("cascade into Playwright. Pass --no-render to disable that.")
