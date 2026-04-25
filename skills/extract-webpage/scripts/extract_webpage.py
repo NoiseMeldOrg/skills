@@ -13,6 +13,7 @@ Dry run (preview metadata only):
 
 import argparse
 import re
+import subprocess
 import sys
 import time
 from urllib.parse import urljoin, urlparse
@@ -22,9 +23,20 @@ from trafilatura.settings import use_config
 
 
 # Below this word count, the static fetch is treated as too sparse and we
-# retry with a headless browser (covers React/Vue/Angular SPAs that render
-# almost entirely client-side).
+# advance to the next fetcher in the cascade (covers React/Vue/Angular SPAs
+# that render almost entirely client-side, and Cloudflare-fronted pages where
+# the fetcher was served a challenge stub instead of the real HTML).
 RENDER_FALLBACK_THRESHOLD = 50
+
+# Curl ships on every macOS/Linux box and uses a TLS fingerprint Cloudflare
+# doesn't block, unlike the Python `requests` library. We hand it a desktop UA
+# so origins that gate on User-Agent return the full document.
+_CURL_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+_CURL_TIMEOUT_SECONDS = 30
 
 PLAYWRIGHT_INSTALL_HINT = (
     "Install Playwright (one-time, ~300MB Chromium goes to ~/.cache/ms-playwright):\n"
@@ -76,8 +88,43 @@ class ChromiumMissing(Exception):
     """Playwright is installed but Chromium browser binary is not."""
 
 
-def fetch_rendered(url, timeout_ms=30000):
+def fetch_via_curl(url, timeout_seconds=_CURL_TIMEOUT_SECONDS,
+                   user_agent=_CURL_USER_AGENT):
+    """Fetch URL via subprocess curl. Returns response body or None.
+
+    Cloudflare blocks the Python `requests` library (and therefore
+    `trafilatura.fetch_url`) by TLS fingerprint -- a browser UA isn't enough.
+    Curl's TLS fingerprint isn't on the blocklist, so this path succeeds on
+    Cloudflare-fronted Mintlify/GitBook/Docusaurus sites where requests gets
+    a 403.
+    """
+    try:
+        result = subprocess.run(
+            ["curl", "-sL", "--max-time", str(timeout_seconds),
+             "-A", user_agent, url],
+            capture_output=True, text=True,
+            timeout=timeout_seconds + 5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout or None
+
+
+def fetch_rendered(url, timeout_ms=30000, wait_until="domcontentloaded"):
     """Fetch URL with headless Chromium and return fully-rendered HTML.
+
+    wait_until:
+        "domcontentloaded" (default) -- return as soon as the DOM is parsed,
+            then poll briefly for a content selector. Mintlify/GitBook/Nextra
+            keep long-lived analytics + websocket connections open, so
+            "networkidle" never fires and Playwright times out at 30s with
+            no content. domcontentloaded sidesteps that.
+        "load"             -- wait for the load event.
+        "networkidle"      -- wait until there are no network connections
+            for 500ms. Slowest, and unreliable on SPAs with persistent
+            connections; kept as a last resort.
 
     Raises PlaywrightMissing if the Python package isn't installed,
     ChromiumMissing if the browser binary isn't installed.
@@ -91,8 +138,21 @@ def fetch_rendered(url, timeout_ms=30000):
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             try:
-                page = browser.new_page()
-                page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+                page = browser.new_page(user_agent=_CURL_USER_AGENT)
+                page.goto(url, wait_until=wait_until, timeout=timeout_ms)
+                # When we returned at domcontentloaded, the main content may
+                # still be hydrating. Wait briefly for a common content
+                # container so SPAs have a chance to render before we snapshot
+                # the DOM. Failure here is expected on plain pages -- swallow.
+                if wait_until == "domcontentloaded":
+                    try:
+                        page.wait_for_selector(
+                            "main, article, [role='main'], #content, .content, "
+                            ".prose, .markdown, .docs-content",
+                            timeout=5000,
+                        )
+                    except Exception:
+                        pass
                 return page.content()
             finally:
                 browser.close()
@@ -150,54 +210,36 @@ def _readability_extract(html, include_links=True):
     return markdown.strip() or None
 
 
-def fetch_and_extract(url, config=None, include_links=True, include_images=False,
-                      include_tables=True, render="auto"):
-    """Fetch a single URL and return (markdown_content, metadata, used_render).
+def _extract_with_readability_fallback(html, config, include_links,
+                                       include_images, include_tables):
+    """Run trafilatura on HTML and apply the Readability fallback when needed.
 
-    render:
-        "auto"   - try static fetch first, fall back to headless browser if
-                   the result is sparse (likely JS-rendered).
-        "always" - skip the static fetch, always use the headless browser.
-        "never"  - static fetch only; return whatever it produces.
+    Returns (content, metadata). Two failure modes Readability rescues:
+      1. Trafilatura returns nothing -- page lacks any structure it recognizes.
+      2. Trafilatura returns plenty of words but strips all headings/lists --
+         the SPA's generic <div>s confuse its structure detection so it dumps
+         a wall of paragraphs. Result is technically extracted but unreadable.
+    Readability scores by text density rather than semantic tags, so it
+    survives both. We prefer it only when it clearly does better, to avoid
+    regressing on plain articles where trafilatura already wins.
     """
-    config = config or make_config()
     extract_kwargs = dict(
         config=config, include_links=include_links,
         include_images=include_images, include_tables=include_tables,
     )
+    content, metadata = _extract_from_html(html, **extract_kwargs)
 
-    static_content, static_metadata = None, None
-    if render != "always":
-        downloaded = trafilatura.fetch_url(url, config=config)
-        if downloaded:
-            static_content, static_metadata = _extract_from_html(downloaded, **extract_kwargs)
-            words = len(static_content.split()) if static_content else 0
-            if render == "never" or words >= RENDER_FALLBACK_THRESHOLD:
-                return static_content, static_metadata, False
-
-    rendered_html = fetch_rendered(url)
-    content, metadata = _extract_from_html(rendered_html, **extract_kwargs)
-
-    # Two failure modes for trafilatura on SPAs:
-    #   1. Returns nothing -- page lacks any structure trafilatura recognizes.
-    #   2. Returns plenty of words but strips all headings/lists -- the SPA's
-    #      generic <div>s confuse trafilatura's structure detection so it dumps
-    #      a wall of paragraphs. Result is technically extracted but unreadable.
-    # Readability scores by text density, not semantic tags, so it survives both
-    # cases. Compare the two and prefer Readability when it preserves structure
-    # trafilatura lost.
     use_readability = False
     readability_md = None
 
     if not content or len(content.split()) < RENDER_FALLBACK_THRESHOLD:
-        readability_md = _readability_extract(rendered_html, include_links=include_links)
+        readability_md = _readability_extract(html, include_links=include_links)
         if readability_md and len(readability_md.split()) >= RENDER_FALLBACK_THRESHOLD:
             use_readability = True
     else:
-        # Trafilatura returned content but possibly flattened. Compare structure.
         traf_headings = len(re.findall(r'^#{1,6} ', content, re.MULTILINE))
         if traf_headings == 0:
-            readability_md = _readability_extract(rendered_html, include_links=include_links)
+            readability_md = _readability_extract(html, include_links=include_links)
             if readability_md:
                 read_headings = len(re.findall(r'^#{1,6} ', readability_md, re.MULTILINE))
                 read_words = len(readability_md.split())
@@ -213,9 +255,112 @@ def fetch_and_extract(url, config=None, include_links=True, include_images=False
         print(f"  (using Readability fallback: trafilatura returned {traf_words} words "
               f"with no structure, Readability returned {len(readability_md.split())} words "
               f"with headings preserved)", file=sys.stderr)
-        return readability_md, metadata, True
+        return readability_md, metadata
 
-    return content, metadata, True
+    return content, metadata
+
+
+def _build_fetch_plan(fetcher, render, wait_until):
+    """Return ordered list of (label, callable_taking_url) fetch attempts.
+
+    fetcher:
+        "auto"       - cascade trafilatura -> curl -> playwright(dcl) ->
+                       playwright(networkidle), pruned by `render` setting
+        "requests"   - trafilatura.fetch_url only
+        "curl"       - subprocess curl only
+        "playwright" - headless Chromium only
+
+    render: "auto" | "always" (Playwright only) | "never" (no Playwright).
+            Honored only when fetcher == "auto"; an explicit fetcher choice
+            overrides it.
+    """
+    pw_wait = wait_until or "domcontentloaded"
+
+    requests_step = ("requests",
+                     lambda u: trafilatura.fetch_url(u, config=make_config()))
+    curl_step = ("curl", fetch_via_curl)
+    pw_dcl_step = ("playwright[domcontentloaded]",
+                   lambda u: fetch_rendered(u, wait_until=pw_wait))
+    pw_idle_step = ("playwright[networkidle]",
+                    lambda u: fetch_rendered(u, wait_until="networkidle"))
+
+    if fetcher == "requests":
+        return [requests_step]
+    if fetcher == "curl":
+        return [curl_step]
+    if fetcher == "playwright":
+        # Honor an explicit --wait-until; otherwise try the fast path then
+        # fall back to networkidle.
+        if wait_until and wait_until != "domcontentloaded":
+            return [("playwright[%s]" % wait_until,
+                     lambda u: fetch_rendered(u, wait_until=wait_until))]
+        return [pw_dcl_step, pw_idle_step]
+
+    # fetcher == "auto"
+    if render == "always":
+        return [pw_dcl_step, pw_idle_step]
+    if render == "never":
+        return [requests_step, curl_step]
+    return [requests_step, curl_step, pw_dcl_step, pw_idle_step]
+
+
+def fetch_and_extract(url, config=None, include_links=True, include_images=False,
+                      include_tables=True, render="auto", fetcher="auto",
+                      wait_until=None):
+    """Fetch a single URL and return (markdown_content, metadata, used_render).
+
+    Walks a cascade of fetchers (trafilatura.fetch_url -> curl -> Playwright
+    domcontentloaded -> Playwright networkidle) and returns the first result
+    that clears RENDER_FALLBACK_THRESHOLD words. Falls back to the best
+    sub-threshold result if nothing clears it.
+
+    fetcher:    explicit fetcher to use, or "auto" for the cascade
+    render:     for fetcher=="auto", whether Playwright is in the cascade
+    wait_until: Playwright wait condition (default: domcontentloaded)
+    """
+    config = config or make_config()
+    plan = _build_fetch_plan(fetcher, render, wait_until)
+
+    best = None  # (content, metadata, used_render, words)
+    last_pw_error = None
+
+    for label, fetch_fn in plan:
+        try:
+            html = fetch_fn(url)
+        except (PlaywrightMissing, ChromiumMissing) as exc:
+            last_pw_error = exc
+            # If the user explicitly asked for Playwright, surface it. Otherwise
+            # skip the Playwright steps and let earlier fetchers' results stand.
+            if fetcher == "playwright":
+                raise
+            continue
+        except Exception as exc:
+            print(f"  ({label} fetch failed: {exc})", file=sys.stderr)
+            continue
+
+        if not html:
+            continue
+
+        content, metadata = _extract_with_readability_fallback(
+            html, config, include_links, include_images, include_tables,
+        )
+        words = len(content.split()) if content else 0
+        used_render = label.startswith("playwright")
+
+        if words >= RENDER_FALLBACK_THRESHOLD:
+            return content, metadata, used_render
+
+        if content and (best is None or words > best[3]):
+            best = (content, metadata, used_render, words)
+
+    if best is not None:
+        return best[0], best[1], best[2]
+
+    # Nothing produced content. Re-raise a Playwright error if that's the only
+    # thing that went wrong, so the caller can surface the install hint.
+    if last_pw_error is not None and fetcher == "auto":
+        raise last_pw_error
+    return None, None, False
 
 
 # File extensions Playwright can't render (it triggers a download instead),
@@ -275,14 +420,81 @@ def _path_prefix_for_scope(start_url):
     return f"/{first_segment}"
 
 
+_SITEMAP_LOC_RE = re.compile(r"<loc>\s*([^<\s]+)\s*</loc>", re.IGNORECASE)
+
+
+def _parse_sitemap_xml(xml, domain):
+    """Pull URLs out of a sitemap.xml or sitemap-index payload via regex.
+
+    Regex is good enough here -- sitemaps are flat <loc> lists. Filters to
+    same-domain URLs.
+    """
+    if not xml:
+        return []
+    found = []
+    for match in _SITEMAP_LOC_RE.finditer(xml):
+        loc = match.group(1).strip()
+        if not loc:
+            continue
+        if urlparse(loc).netloc == domain:
+            found.append(loc)
+    return found
+
+
+def _fetch_sitemap_via_curl(start_url):
+    """Try common sitemap locations via curl; expand sitemap-indexes one level.
+
+    Sitemaps are static XML at well-known paths and almost always reachable via
+    plain curl, even on Cloudflare-fronted sites where requests is 403'd.
+    Returns deduplicated list of page URLs (sitemap-index entries are followed
+    once, not recursively, which is enough for ~99% of real sites).
+    """
+    parsed = urlparse(start_url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+    domain = parsed.netloc
+    candidates = [
+        f"{base}/sitemap.xml",
+        f"{base}/sitemap_index.xml",
+        f"{base}/sitemap-index.xml",
+        f"{base}/sitemap.xml.gz",
+    ]
+
+    for sitemap_url in candidates:
+        xml = fetch_via_curl(sitemap_url)
+        if not xml:
+            continue
+        entries = _parse_sitemap_xml(xml, domain)
+        if not entries:
+            continue
+        # If entries point at more sitemaps (sitemap index), expand one level.
+        page_urls = []
+        seen = set()
+        for entry in entries:
+            path = urlparse(entry).path.lower()
+            if path.endswith(".xml") or path.endswith(".xml.gz") or "sitemap" in path:
+                sub = fetch_via_curl(entry)
+                for u in _parse_sitemap_xml(sub, domain):
+                    if u not in seen:
+                        seen.add(u)
+                        page_urls.append(u)
+            else:
+                if entry not in seen:
+                    seen.add(entry)
+                    page_urls.append(entry)
+        if page_urls:
+            return page_urls
+    return []
+
+
 def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
                    render="auto", scope=True):
     """Discover pages on the same domain starting from a URL.
 
-    Tries a sitemap first, then static link extraction, then a rendered fetch
-    (Playwright) if the static page yields no same-domain links -- which is
-    the signature of a client-rendered SPA. Returns a deduplicated list of
-    URLs including the start URL.
+    Tries the sitemap first (via trafilatura, then a curl-based fallback for
+    Cloudflare-fronted sites where trafilatura's request gets 403'd). If no
+    sitemap, falls back to static link extraction, then to a rendered fetch
+    via Playwright -- the signature of a client-rendered SPA. Returns a
+    deduplicated list of URLs including the start URL.
 
     render: "auto" (sitemap -> static -> rendered fallback),
             "always" (skip static, go straight to rendered),
@@ -297,24 +509,39 @@ def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
     exclude_patterns = exclude_patterns or []
     scope_prefix = _path_prefix_for_scope(start_url) if scope else ""
 
-    # Try sitemap first -- works regardless of how the site renders
+    # Try sitemap first -- works regardless of how the site renders.
+    # trafilatura's sitemap_search uses the requests library internally and is
+    # blocked by Cloudflare; if it returns nothing, fall back to curl before
+    # assuming there's no sitemap.
     from trafilatura import sitemaps
     sitemap_urls = sitemaps.sitemap_search(start_url)
-
     if sitemap_urls:
         urls = [u for u in sitemap_urls if urlparse(u).netloc == domain]
     else:
-        urls = []
+        urls = _fetch_sitemap_via_curl(start_url)
+        if urls:
+            print(f"Found {len(urls)} URLs via curl-fetched sitemap "
+                  f"(trafilatura's sitemap_search returned nothing -- likely "
+                  f"blocked by upstream WAF).", file=sys.stderr)
+
+    if not urls:
+        # No sitemap -- fall back to link discovery on the start page itself.
+        # Cascade trafilatura -> curl -> rendered, mirroring fetch_and_extract.
+        downloaded = None
         if render != "always":
             downloaded = trafilatura.fetch_url(start_url, config=config)
             if downloaded:
                 urls = _extract_same_domain_links(downloaded, start_url, domain)
+            if not urls:
+                downloaded = fetch_via_curl(start_url)
+                if downloaded:
+                    urls = _extract_same_domain_links(downloaded, start_url, domain)
 
         # Static returned nothing useful: probably a JS-only shell. Render it.
         need_render = (render == "always") or (render == "auto" and not urls)
         if need_render:
-            print("Rendering start page to discover links (static HTML had none)...",
-                  file=sys.stderr)
+            print("Rendering start page to discover links (sitemap and static "
+                  "HTML had none)...", file=sys.stderr)
             rendered_html = fetch_rendered(start_url)
             urls = _extract_same_domain_links(rendered_html, start_url, domain)
 
@@ -360,23 +587,54 @@ def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
     return urls
 
 
-def dry_run(url, crawl=False, render="auto", scope=True):
-    """Preview metadata and page list without extracting full content."""
+def dry_run(url, crawl=False, render="auto", scope=True, fetcher="auto",
+            wait_until=None):
+    """Preview metadata and page list without extracting full content.
+
+    Walks the same fetcher cascade as fetch_and_extract so the preview matches
+    what extraction would actually see -- if curl is the fetcher that succeeds
+    on a Cloudflare-fronted page, the dry run shows that.
+    """
     config = make_config()
 
     print("=== Dry Run ===")
     print(f"URL: {url}")
     print()
 
-    downloaded = trafilatura.fetch_url(url, config=config)
+    # Walk the static-only portion of the cascade for the preview. Skipping
+    # Playwright keeps the dry run fast; the Limitations note below tells the
+    # user what would happen during real extraction.
+    plan_fetcher = fetcher if fetcher != "auto" else "auto"
+    plan = _build_fetch_plan(plan_fetcher,
+                             render="never" if plan_fetcher == "auto" else render,
+                             wait_until=wait_until)
+
+    downloaded = None
+    used_label = None
+    for label, fetch_fn in plan:
+        try:
+            html = fetch_fn(url)
+        except (PlaywrightMissing, ChromiumMissing):
+            continue
+        except Exception as exc:
+            print(f"  ({label} fetch failed: {exc})", file=sys.stderr)
+            continue
+        if html:
+            downloaded = html
+            used_label = label
+            break
+
     if not downloaded:
-        print("ERROR: Could not fetch URL", file=sys.stderr)
+        print("ERROR: Could not fetch URL via any static fetcher "
+              "(trafilatura, curl). Try --fetcher playwright.",
+              file=sys.stderr)
         return
 
     metadata = trafilatura.extract_metadata(downloaded)
     content = trafilatura.extract(downloaded, output_format="markdown", config=config)
     word_count = len(content.split()) if content else 0
 
+    print(f"Fetcher:     {used_label}")
     print(f"Title:       {metadata.title if metadata and metadata.title else '(not detected)'}")
     print(f"Author:      {metadata.author if metadata and metadata.author else '(not detected)'}")
     print(f"Date:        {metadata.date if metadata and metadata.date else '(not detected)'}")
@@ -388,8 +646,8 @@ def dry_run(url, crawl=False, render="auto", scope=True):
 
     if word_count < RENDER_FALLBACK_THRESHOLD:
         print()
-        print("Page looks sparse or JS-rendered. Extraction will retry with a")
-        print("headless browser. Pass --no-render to disable that fallback.")
+        print("Page looks sparse or JS-rendered. Extraction will continue the")
+        print("cascade into Playwright. Pass --no-render to disable that.")
 
     if crawl:
         print()
@@ -523,6 +781,21 @@ def main():
                               help="Never render; return whatever the static "
                                    "fetch produces (faster, may miss JS pages)")
     parser.set_defaults(render="auto")
+    parser.add_argument("--fetcher", choices=["auto", "requests", "curl", "playwright"],
+                        default="auto",
+                        help="Force a specific fetcher (default: auto). The auto "
+                             "cascade is trafilatura -> curl -> Playwright "
+                             "(domcontentloaded) -> Playwright (networkidle). "
+                             "Use 'curl' for Cloudflare-fronted sites that 403 "
+                             "the requests library; use 'playwright' to skip "
+                             "static fetchers entirely.")
+    parser.add_argument("--wait-until",
+                        choices=["domcontentloaded", "load", "networkidle"],
+                        default=None,
+                        help="Playwright wait condition (default: "
+                             "domcontentloaded). Mintlify/GitBook/Nextra keep "
+                             "long-lived connections open so 'networkidle' "
+                             "times out at 30s with no content.")
 
     args = parser.parse_args()
     config = make_config()
@@ -530,7 +803,8 @@ def main():
 
     if args.dry_run:
         dry_run(args.url, crawl=args.crawl, render=args.render,
-                scope=not args.no_scope)
+                scope=not args.no_scope, fetcher=args.fetcher,
+                wait_until=args.wait_until)
         return
 
     def _extract_one(url, fatal_on_error=True):
@@ -538,6 +812,7 @@ def main():
             return fetch_and_extract(
                 url, config=config, include_links=include_links,
                 include_images=args.include_images, render=args.render,
+                fetcher=args.fetcher, wait_until=args.wait_until,
             )
         except PlaywrightMissing:
             print(f"\nERROR: '{url}' looks JavaScript-rendered and Playwright "

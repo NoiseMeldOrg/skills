@@ -7,6 +7,14 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.20
+
+Add Readability fallback and path-scoped crawl to extract-webpage
+
+- - Fall back to Mozilla's Readability (via readability-lxml + markdownify) when trafilatura returns content but strips all the page's headings -- a failure mode common to SPAs whose content sits in generic divs without semantic markup. The fallback fires only when trafilatura returns zero headings AND Readability returns at least three, AND Readability's word count is within 20% of trafilatura's, so it doesn't trigger on normal articles.
+- - Default --crawl to path-scoped discovery: when starting at /docs, only follow links whose path starts with /docs. Cuts dApp-style sites that share a domain between docs and an app UI from dozens of discovered URLs to just the relevant ones. Pass --no-scope to disable when peer sections (e.g. /security as a sibling of /docs) hold related docs.
+- - Document both fallbacks in SKILL.md and update install instructions to include readability-lxml + markdownify.
+
 ## 1.0.19
 
 Add JavaScript rendering to extract-webpage via Playwright

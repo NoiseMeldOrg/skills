@@ -13,7 +13,7 @@ description: >
 
 Convert web pages into clean, structured Markdown with metadata headers and boilerplate removed. The bundled Python script uses trafilatura for content extraction -- it strips navigation, ads, footers, and sidebars automatically, producing the article content as Markdown.
 
-The script tries a fast static fetch first. If the result looks sparse (under 50 words -- the signature of a JavaScript-rendered SPA), it automatically retries with a headless Chromium browser via Playwright and runs trafilatura on the fully-rendered HTML. So React, Vue, and Angular pages work the same way as plain HTML pages.
+The script walks a cascade of fetchers and uses the first one that returns enough content: `trafilatura.fetch_url` (fast static fetch via the requests library) -> subprocess `curl` (bypasses Cloudflare's TLS-fingerprint block on requests) -> headless Chromium with `domcontentloaded` (handles JS-rendered SPAs without waiting for analytics or websocket connections to settle) -> headless Chromium with `networkidle` (last-resort wait for sites that need it). Most pages succeed at step 1 or 2; Playwright is invoked only for genuinely JS-only sites. Override the cascade with `--fetcher {auto,requests,curl,playwright}`.
 
 For SPAs whose content sits in generic `<div>` containers (no `<main>` or `<article>` semantic tags), trafilatura sometimes returns plenty of words but strips all the structure -- a wall of paragraphs with no headings or lists. When that happens, the script automatically falls back to Mozilla's Readability (via `readability-lxml`), which scores by text density rather than tag semantics and preserves the heading hierarchy. The fallback fires when trafilatura returns zero headings on a non-trivial page; it announces itself with a `(using Readability fallback ...)` line on stderr.
 
@@ -42,9 +42,9 @@ The script requires `trafilatura`, plus `playwright` for the JS-rendering fallba
 source .venv/bin/activate && pip install trafilatura playwright readability-lxml markdownify && playwright install chromium
 ```
 
-`trafilatura` handles static HTML on its own. `playwright` is only invoked when a page returns sparse content. `readability-lxml`/`markdownify` are only invoked when trafilatura succeeds at words but loses all the page's headings (the SPA-with-generic-divs case). Install all four up front so the fallbacks are ready when needed. Chromium downloads to `~/.cache/ms-playwright` and is shared across all venvs on the machine, so it's a one-time cost.
+`trafilatura` handles static HTML on its own. `curl` is in the cascade for Cloudflare-fronted sites where the requests library is 403'd; it ships on every macOS/Linux box, no install needed. `playwright` is only invoked when both static fetchers return sparse content -- that is, on genuinely JS-only sites. `readability-lxml`/`markdownify` are invoked when trafilatura succeeds at words but loses all the page's headings (the SPA-with-generic-divs case). Install everything up front so the fallbacks are ready when needed. Chromium downloads to `~/.cache/ms-playwright` and is shared across all venvs on the machine, so it's a one-time cost.
 
-If a JS page is encountered without Playwright installed, the script exits with the install command so the user can install it and re-run. The Readability fallback fails silently (the script just keeps trafilatura's output) if `readability-lxml` is missing.
+If the cascade reaches Playwright but it isn't installed, the script exits with the install command so the user can install it and re-run. The Readability fallback fails silently (the script just keeps trafilatura's output) if `readability-lxml` is missing.
 
 ## Process
 
@@ -58,7 +58,7 @@ source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_webpage.py "<url
 
 This shows the detected title, author, date, site name, description, and word count. For crawl mode, add `--crawl` to the dry run to see the list of discovered pages.
 
-If the word count is under 50, the dry run notes that the page looks JS-rendered and that extraction will retry with a headless browser. That's normal -- proceed to Step 2; the script handles the fallback automatically.
+The dry run reports which fetcher in the cascade succeeded (`Fetcher: requests` for plain HTML, `Fetcher: curl` for Cloudflare-fronted sites). If the word count is under 50, it notes that extraction will continue the cascade into Playwright. That's normal -- proceed to Step 2; the script handles the cascade automatically.
 
 ### Step 2: Extract
 
@@ -89,6 +89,8 @@ Other flags:
 - `--no-scope` disable path-scoped crawling; follow any same-domain link
 - `--render` always render with the headless browser (skip the static fetch); useful when a page returns just enough static content to clear the 50-word threshold but still misses the real article
 - `--no-render` never use the headless browser; faster but will return empty content for JS-only pages
+- `--fetcher {auto,requests,curl,playwright}` force a single fetcher instead of the cascade. Use `curl` for Cloudflare-fronted sites that 403 the requests library; use `playwright` to skip static fetchers entirely
+- `--wait-until {domcontentloaded,load,networkidle}` Playwright wait condition (default: `domcontentloaded`). The default avoids 30-second timeouts on Mintlify/GitBook/Nextra sites that keep analytics websockets open forever
 
 ### Step 3: Post-Process
 
@@ -187,10 +189,10 @@ Add and commit with a descriptive message.
 ## Limitations
 
 - **Authentication**: Cannot access pages behind login walls, paywalls, or CAPTCHAs. The headless browser uses a fresh profile with no saved cookies.
-- **Aggressive anti-bot protection**: Cloudflare's "checking your browser" interstitial, hCaptcha walls, and similar bot-detection layers can still block the headless browser. trafilatura's static fetch will fail outright; the rendered fetch may also be served the challenge page.
+- **Cloudflare and similar WAFs**: The fetcher cascade handles most Cloudflare-fronted sites (Mintlify, GitBook, Docusaurus v3, Nextra) by falling through to the curl step, whose TLS fingerprint isn't on the requests-library blocklist. Active interstitials -- the "checking your browser" spinner, hCaptcha walls, JavaScript-only Turnstile challenges -- still block both curl and the headless browser. If a site serves a challenge page, both fetchers will return the stub HTML and extraction will be sparse.
 - **Rate limiting**: Some sites block rapid requests. The `--delay` flag helps, but aggressive crawling may still get blocked. If extraction fails partway through a crawl, the script outputs what it collected.
-- **Dynamic content**: Infinite-scroll pages and content that only loads on user interaction won't be captured -- the rendered fetch waits for `networkidle` but does not scroll or click.
-- **Speed**: Rendering a page is 5-15x slower than the static fetch. Crawling many JS-rendered pages will be noticeably slow; consider `--max-pages` to keep it bounded.
+- **Dynamic content**: Infinite-scroll pages and content that only loads on user interaction won't be captured -- the rendered fetch waits for `domcontentloaded` plus a brief content-selector poll but does not scroll or click. For full SPA crawls of an infinite-scroll feed, an explicit `--render --wait-until networkidle` may help, but only on sites whose network actually goes idle.
+- **Speed**: Rendering a page is 5-15x slower than the static path (trafilatura or curl). The cascade only invokes Playwright when both static fetchers come back empty, so plain HTML and Cloudflare-fronted docs sites stay fast; only genuine SPAs incur the rendering cost.
 
 ## Troubleshooting
 
@@ -200,4 +202,5 @@ Add and commit with a descriptive message.
 - **Garbled text**: Encoding issues. trafilatura handles most cases, but some older sites with mixed encodings may produce artifacts. Check the original page's charset.
 - **Missing sections on crawl**: The sitemap may not list all pages, and link discovery only follows `<a>` tags on the start page. For sites with deep navigation, run the script on specific sub-pages individually.
 - **Too many pages on crawl**: Use `--max-pages` to limit. Review the dry run page list first.
-- **Render-mode timeout**: Some sites never reach `networkidle` (live tickers, analytics pings). If the rendered fetch times out, the article is probably available before networkidle fires anyway -- consider piping the relevant section in manually if this becomes a recurring problem.
+- **Render-mode timeout**: The default Playwright wait is `domcontentloaded`, which sidesteps the long-lived analytics/websocket connections that keep `networkidle` from firing on Mintlify, GitBook, and Nextra. If a site genuinely needs late-loading content, try `--wait-until networkidle` -- it's slower and may still time out, but it's there as a last resort.
+- **Cloudflare 403**: If trafilatura returns nothing on a Cloudflare-fronted page, the cascade falls through to curl automatically. If curl also returns nothing, the site is probably serving an interstitial challenge page; try `--fetcher playwright` to render it through a real browser, but understand that Turnstile-style challenges still block headless Chromium.
