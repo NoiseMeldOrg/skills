@@ -7,6 +7,38 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.19
+
+Add JavaScript rendering to extract-webpage via Playwright
+
+- The static trafilatura fetch returns nothing on React/Vue/Angular SPAs
+- because the HTML is just an empty shell before client-side rendering.
+- The script now falls back to a headless Chromium browser (via Playwright)
+- when the static result is under 50 words, runs trafilatura on the
+- fully-rendered HTML, and produces the same Markdown output. Users get
+- all pages -- static or JS-rendered -- without flags or extra steps.
+- New flags --render and --no-render let callers force or skip the
+- browser path.
+- Crawl discovery picks up the same fallback. When the sitemap and
+- static-HTML link extraction both yield nothing (the SPA shell has no
+- <a> tags), discovery renders the start page and harvests links from
+- the DOM. aerodrome.finance/docs went from 1 discovered page to 13
+- with this change. Discovery also filters out URLs ending in binary
+- extensions (.pdf, .zip, image/audio/video formats) before they're
+- crawled, because Chromium triggers a download instead of rendering
+- for those URLs and was crashing the whole crawl on the first PDF
+- link. Per-page errors during a crawl now log and continue rather
+- than aborting the entire run.
+- Playwright is a soft dependency. The script imports it lazily and
+- exits with a clear install command (pip install playwright &&
+- playwright install chromium) when a JS page is encountered without
+- it. Most users never hit that path. Chromium installs to
+- ~/.cache/ms-playwright, shared across all venvs on the machine, so
+- it's a one-time per-machine cost rather than per-project.
+- SKILL.md, README.md, and the marketplace entry are updated to
+- document the new dependency, the auto-fallback behavior, and the
+- new flags.
+
 ## 1.0.18
 
 Add CONTRIBUTING guide and formalize references/ convention

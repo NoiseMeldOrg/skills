@@ -15,6 +15,8 @@ Convert web pages into clean, structured Markdown with metadata headers and boil
 
 The script tries a fast static fetch first. If the result looks sparse (under 50 words -- the signature of a JavaScript-rendered SPA), it automatically retries with a headless Chromium browser via Playwright and runs trafilatura on the fully-rendered HTML. So React, Vue, and Angular pages work the same way as plain HTML pages.
 
+For SPAs whose content sits in generic `<div>` containers (no `<main>` or `<article>` semantic tags), trafilatura sometimes returns plenty of words but strips all the structure -- a wall of paragraphs with no headings or lists. When that happens, the script automatically falls back to Mozilla's Readability (via `readability-lxml`), which scores by text density rather than tag semantics and preserves the heading hierarchy. The fallback fires when trafilatura returns zero headings on a non-trivial page; it announces itself with a `(using Readability fallback ...)` line on stderr.
+
 Handles two modes:
 - **Single page** (default): one URL, one document
 - **Site crawl** (`--crawl`): discovers pages via sitemap or link following, extracts each, combines into one document with a table of contents
@@ -34,15 +36,15 @@ Do NOT use for:
 
 ## Setup
 
-The script requires `trafilatura`, plus `playwright` for the JS-rendering fallback. Install both in the project venv:
+The script requires `trafilatura`, plus `playwright` for the JS-rendering fallback and `readability-lxml`+`markdownify` for the structure-recovery fallback. Install everything in the project venv:
 
 ```bash
-source .venv/bin/activate && pip install trafilatura playwright && playwright install chromium
+source .venv/bin/activate && pip install trafilatura playwright readability-lxml markdownify && playwright install chromium
 ```
 
-`trafilatura` handles static HTML on its own. `playwright` is only invoked when a page returns sparse content -- but install both up front so the JS fallback is ready when needed. Chromium downloads to `~/.cache/ms-playwright` and is shared across all venvs on the machine, so it's a one-time cost.
+`trafilatura` handles static HTML on its own. `playwright` is only invoked when a page returns sparse content. `readability-lxml`/`markdownify` are only invoked when trafilatura succeeds at words but loses all the page's headings (the SPA-with-generic-divs case). Install all four up front so the fallbacks are ready when needed. Chromium downloads to `~/.cache/ms-playwright` and is shared across all venvs on the machine, so it's a one-time cost.
 
-If a JS page is encountered without Playwright installed, the script exits with the install command so the user can install it and re-run.
+If a JS page is encountered without Playwright installed, the script exits with the install command so the user can install it and re-run. The Readability fallback fails silently (the script just keeps trafilatura's output) if `readability-lxml` is missing.
 
 ## Process
 
@@ -74,7 +76,9 @@ The `--crawl` flag discovers pages on the same domain (via sitemap, then static 
 
 On JS-only sites (React/Vue/Angular SPAs), discovery automatically falls back to rendering the start page and harvesting its DOM links, so crawl works on those sites too.
 
-The script automatically filters out non-content URLs when crawling (tag pages, category pages, login pages, etc.). Override with `--exclude /pattern1/ /pattern2/` or disable with `--no-exclude`.
+**Path scoping (default):** when the start URL has a non-root path like `/docs` or `/blog`, the crawl follows only links whose path starts with the same top-level segment. Crawling `https://example.com/docs` discovers `/docs/intro` and `/docs/api` but ignores `/about` or `/pricing`. This dramatically narrows app-style sites where the docs share a domain with a dApp UI. Caveats: peer sections (e.g. `/security` as a sibling of `/docs`) are excluded -- pass `--no-scope` to include them. Confirm with `--dry-run` first.
+
+The script also filters out generic non-content URLs when crawling (tag pages, category pages, login pages, etc.). Override with `--exclude /pattern1/ /pattern2/` or disable with `--no-exclude`.
 
 Other flags:
 - `--no-links` strips hyperlinks from the output (cleaner for archival)
@@ -82,6 +86,7 @@ Other flags:
 - `--delay N` seconds between crawl requests (default: 1.0)
 - `--exclude /path/ /path/` custom URL patterns to exclude when crawling
 - `--no-exclude` disable default URL filtering (include everything)
+- `--no-scope` disable path-scoped crawling; follow any same-domain link
 - `--render` always render with the headless browser (skip the static fetch); useful when a page returns just enough static content to clear the 50-word threshold but still misses the real article
 - `--no-render` never use the headless browser; faster but will return empty content for JS-only pages
 

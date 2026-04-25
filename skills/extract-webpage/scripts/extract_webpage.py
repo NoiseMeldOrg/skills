@@ -31,6 +31,11 @@ PLAYWRIGHT_INSTALL_HINT = (
     "    pip install playwright && playwright install chromium"
 )
 
+READABILITY_INSTALL_HINT = (
+    "Install the Readability fallback so SPAs without semantic markup can be extracted:\n"
+    "    pip install readability-lxml markdownify"
+)
+
 
 def slugify(text: str) -> str:
     """Match GitHub's heading-anchor scheme: lowercase, drop non-word chars
@@ -112,6 +117,39 @@ def _extract_from_html(html, config, include_links, include_images, include_tabl
     return content, metadata
 
 
+def _readability_extract(html, include_links=True):
+    """Fallback extractor using Mozilla's Readability (via readability-lxml).
+
+    Trafilatura is conservative: it discards anything that doesn't structurally
+    look like an article (no <main>/<article>, low text density). Many SPAs
+    render content into generic <div> containers that trafilatura rejects even
+    though the prose is right there. Readability is greedy -- it scores every
+    container for text density and picks the densest one. Returns Markdown.
+
+    Returns None if either dependency is missing or extraction yields nothing.
+    """
+    try:
+        from readability import Document
+        from markdownify import markdownify as md
+    except ImportError:
+        return None
+
+    try:
+        doc = Document(html)
+        content_html = doc.summary(html_partial=True)
+    except Exception:
+        return None
+
+    if not content_html:
+        return None
+
+    strip_tags = ["div", "span"]
+    if not include_links:
+        strip_tags.append("a")
+    markdown = md(content_html, heading_style="ATX", strip=strip_tags)
+    return markdown.strip() or None
+
+
 def fetch_and_extract(url, config=None, include_links=True, include_images=False,
                       include_tables=True, render="auto"):
     """Fetch a single URL and return (markdown_content, metadata, used_render).
@@ -139,6 +177,44 @@ def fetch_and_extract(url, config=None, include_links=True, include_images=False
 
     rendered_html = fetch_rendered(url)
     content, metadata = _extract_from_html(rendered_html, **extract_kwargs)
+
+    # Two failure modes for trafilatura on SPAs:
+    #   1. Returns nothing -- page lacks any structure trafilatura recognizes.
+    #   2. Returns plenty of words but strips all headings/lists -- the SPA's
+    #      generic <div>s confuse trafilatura's structure detection so it dumps
+    #      a wall of paragraphs. Result is technically extracted but unreadable.
+    # Readability scores by text density, not semantic tags, so it survives both
+    # cases. Compare the two and prefer Readability when it preserves structure
+    # trafilatura lost.
+    use_readability = False
+    readability_md = None
+
+    if not content or len(content.split()) < RENDER_FALLBACK_THRESHOLD:
+        readability_md = _readability_extract(rendered_html, include_links=include_links)
+        if readability_md and len(readability_md.split()) >= RENDER_FALLBACK_THRESHOLD:
+            use_readability = True
+    else:
+        # Trafilatura returned content but possibly flattened. Compare structure.
+        traf_headings = len(re.findall(r'^#{1,6} ', content, re.MULTILINE))
+        if traf_headings == 0:
+            readability_md = _readability_extract(rendered_html, include_links=include_links)
+            if readability_md:
+                read_headings = len(re.findall(r'^#{1,6} ', readability_md, re.MULTILINE))
+                read_words = len(readability_md.split())
+                traf_words = len(content.split())
+                # Readability wins if it preserves multiple headings trafilatura
+                # missed AND its word count is comparable (within 20%) -- guards
+                # against Readability grabbing nav/sidebar in its dragnet.
+                if read_headings >= 3 and read_words >= 0.8 * traf_words:
+                    use_readability = True
+
+    if use_readability:
+        traf_words = len(content.split()) if content else 0
+        print(f"  (using Readability fallback: trafilatura returned {traf_words} words "
+              f"with no structure, Readability returned {len(readability_md.split())} words "
+              f"with headings preserved)", file=sys.stderr)
+        return readability_md, metadata, True
+
     return content, metadata, True
 
 
@@ -179,8 +255,28 @@ def _extract_same_domain_links(html, start_url, domain):
     return urls
 
 
+def _path_prefix_for_scope(start_url):
+    """Return the path prefix that other URLs must match to be in scope.
+
+    "https://example.com/docs"        -> "/docs"
+    "https://example.com/docs/"       -> "/docs"
+    "https://example.com/docs/intro"  -> "/docs"
+    "https://example.com/"            -> "" (no scoping)
+    "https://example.com"             -> "" (no scoping)
+
+    Only the top-level path segment is used. A start URL deep inside a
+    section still scopes to the section root, so /docs/intro will still
+    crawl /docs/api.
+    """
+    path = urlparse(start_url).path.strip("/")
+    if not path:
+        return ""
+    first_segment = path.split("/", 1)[0]
+    return f"/{first_segment}"
+
+
 def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
-                   render="auto"):
+                   render="auto", scope=True):
     """Discover pages on the same domain starting from a URL.
 
     Tries a sitemap first, then static link extraction, then a rendered fetch
@@ -192,10 +288,14 @@ def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
             "always" (skip static, go straight to rendered),
             "never" (no rendered fallback even if static yields nothing).
     exclude_patterns: list of substrings to exclude from discovered URLs.
+    scope: when True (default), restrict discovery to URLs whose path starts
+           with the same top-level segment as start_url (e.g. /docs/* when
+           starting at /docs). Has no effect when start_url is the site root.
     """
     config = config or make_config()
     domain = urlparse(start_url).netloc
     exclude_patterns = exclude_patterns or []
+    scope_prefix = _path_prefix_for_scope(start_url) if scope else ""
 
     # Try sitemap first -- works regardless of how the site renders
     from trafilatura import sitemaps
@@ -231,6 +331,22 @@ def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
             print(f"Excluded {excluded} URLs matching patterns: {exclude_patterns}",
                   file=sys.stderr)
 
+    # Apply path scoping: when starting at /docs, only crawl /docs/*. The start
+    # URL itself is exempt (always kept). A common surprise is when a sibling
+    # section (e.g. /security as a peer of /docs) holds related docs -- the
+    # user can disable scoping with --no-scope to capture those.
+    if scope_prefix:
+        start_clean = start_url.rstrip("/")
+        before = len(urls)
+        urls = [u for u in urls
+                if u == start_clean
+                or urlparse(u).path.startswith(scope_prefix)]
+        scoped_out = before - len(urls)
+        if scoped_out:
+            print(f"Path-scoped to {scope_prefix}/* (excluded {scoped_out} URLs "
+                  f"outside scope; use --no-scope to disable)",
+                  file=sys.stderr)
+
     # Ensure start URL is first
     start_clean = start_url.rstrip("/")
     if start_clean in urls:
@@ -244,7 +360,7 @@ def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
     return urls
 
 
-def dry_run(url, crawl=False, render="auto"):
+def dry_run(url, crawl=False, render="auto", scope=True):
     """Preview metadata and page list without extracting full content."""
     config = make_config()
 
@@ -280,7 +396,7 @@ def dry_run(url, crawl=False, render="auto"):
         print("=== Discovered Pages ===")
         pages = discover_pages(url, config=config,
                                exclude_patterns=_default_exclude_patterns(),
-                               render=render)
+                               render=render, scope=scope)
         for i, page_url in enumerate(pages, 1):
             print(f"  {i:3d}. {page_url}")
         print(f"\nTotal: {len(pages)} pages")
@@ -392,6 +508,11 @@ def main():
                              "non-content paths; pass explicit patterns to override.")
     parser.add_argument("--no-exclude", action="store_true",
                         help="Disable default URL exclusion patterns when crawling")
+    parser.add_argument("--no-scope", action="store_true",
+                        help="Disable path-scoped crawling. By default, when "
+                             "crawling from a non-root URL like /docs, only "
+                             "URLs under /docs/* are followed. --no-scope "
+                             "follows any same-domain link.")
     render_group = parser.add_mutually_exclusive_group()
     render_group.add_argument("--render", action="store_const", dest="render",
                               const="always",
@@ -408,7 +529,8 @@ def main():
     include_links = not args.no_links
 
     if args.dry_run:
-        dry_run(args.url, crawl=args.crawl, render=args.render)
+        dry_run(args.url, crawl=args.crawl, render=args.render,
+                scope=not args.no_scope)
         return
 
     def _extract_one(url, fatal_on_error=True):
@@ -446,7 +568,8 @@ def main():
         try:
             urls = discover_pages(args.url, config=config,
                                   max_pages=args.max_pages,
-                                  exclude_patterns=exclude, render=args.render)
+                                  exclude_patterns=exclude, render=args.render,
+                                  scope=not args.no_scope)
         except PlaywrightMissing:
             print(f"\nERROR: '{args.url}' has no static links to crawl and "
                   "Playwright is not installed.", file=sys.stderr)
