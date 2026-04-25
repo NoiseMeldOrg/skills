@@ -14,13 +14,14 @@ A Claude Code plugin marketplace publishing five skills for document extraction 
 - `skills/clear-and-concise-humanization/references/` — bundled reference material (Strunk, Wikipedia AI-tells, tiered word lists) the skill cites by path.
 - `scripts/` and `.githooks/` — repo-level automation for versioning and changelog (see below).
 
-## Versioning and changelog (automated, do not edit by hand)
+## Versioning and changelog (automated)
 
-Version is `1.0.<commits-on-main>`. The pre-commit hook runs `scripts/set_version.sh`, which rewrites `metadata.version` in `marketplace.json` and stages it. The commit-msg hook runs `scripts/generate_changelog.py`, which regenerates `CHANGELOG.md` from `git log` (plus the pending message) and stages it.
+Version is `1.0.<commits-on-main>`. The pre-commit hook runs `scripts/set_version.sh`, which rewrites `metadata.version` in `marketplace.json` and stages it. The commit-msg hook runs `scripts/generate_changelog.py`, which adds the pending commit's entry to `CHANGELOG.md` and stages the file.
 
 Consequences:
-- Never hand-edit `metadata.version` in `marketplace.json` or any entry in `CHANGELOG.md` — both get overwritten on the next commit.
-- The first line of every commit message becomes a changelog heading; body lines become bullets. Write commit messages accordingly.
+- Never hand-edit `metadata.version` in `marketplace.json` — it's regenerated from `git rev-list --count main` on every commit.
+- Entries in `CHANGELOG.md` ARE preserved: the generator only writes entries that don't already exist (the pending commit, plus any historical version missing from the file). Polish a release entry, commit something else, and your edits stay. To re-derive an entry from `git log` (e.g. after `git rebase` reworded a commit), delete that version's section from `CHANGELOG.md` first.
+- The first line of every commit message becomes the new changelog entry's subject; body lines become bullets. Write commit messages accordingly — most entries land directly without further editing.
 - Hooks live in `.githooks/`, not the default path. Activate them once per clone: `git config core.hooksPath .githooks`.
 - `./scripts/set_version.sh --check` prints the version without writing.
 
