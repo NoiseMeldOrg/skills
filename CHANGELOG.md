@@ -7,6 +7,20 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.18
+
+Add CONTRIBUTING guide and formalize references/ convention
+
+- Add CONTRIBUTING.md covering setup (including the one-time
+- git hooks activation), local testing, the version/changelog
+- pipeline, commit-message conventions, and how to add a new
+- skill. Link it from README.
+- In CLAUDE.md, document two conventions that were implicit:
+- the references/ subfolder pattern for offloading domain
+- knowledge (already used by clear-and-concise-humanization)
+- and the lowercase kebab-case filename contract across the
+- extract-* skills.
+
 ## 1.0.17
 
 Add Related skills section pointing to vibe-security

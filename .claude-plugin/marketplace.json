@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Custom skills for document extraction and writing",
-    "version": "1.0.18"
+    "version": "1.0.19"
   },
   "plugins": [
     {
@@ -47,7 +47,7 @@
     },
     {
       "name": "extract-webpage",
-      "description": "Extract web pages into structured Markdown with boilerplate removal. Single pages or full-site crawls. Requires trafilatura.",
+      "description": "Extract web pages into structured Markdown with boilerplate removal. Static HTML and JavaScript-rendered SPAs (React, Vue, Angular). Single pages or full-site crawls. Requires trafilatura and playwright.",
       "source": "./",
       "strict": false,
       "skills": [

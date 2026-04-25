@@ -72,10 +72,11 @@ The extract skills need Python packages:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install pdfplumber youtube_transcript_api trafilatura
+pip install pdfplumber youtube_transcript_api trafilatura playwright
+playwright install chromium
 ```
 
-`extract-book` and `extract-study` use `pdfplumber`. `extract-transcript` uses `youtube_transcript_api` when fetching from YouTube URLs (pasted transcripts need nothing). `extract-webpage` uses `trafilatura` for fetching and content extraction.
+`extract-book` and `extract-study` use `pdfplumber`. `extract-transcript` uses `youtube_transcript_api` when fetching from YouTube URLs (pasted transcripts need nothing). `extract-webpage` uses `trafilatura` for static HTML and falls back to `playwright` (with a bundled Chromium) for JavaScript-rendered pages.
 
 ---
 
@@ -123,9 +124,9 @@ Give Claude a URL, or run `/extract-webpage https://example.com/article`. Claude
 
 For full-site crawls, add `--crawl` to discover and extract all pages on the domain. The script finds pages via sitemap or link following, filters out tag/category/login pages by default, and combines everything into one document with a table of contents. Use `--max-pages` to cap the crawl and `--delay` to control request pacing.
 
-The bundled script uses trafilatura for content extraction. It handles most static HTML sites well. JavaScript-rendered pages (React SPAs, heavy client-side rendering) and authenticated pages won't work -- the dry run shows this immediately (0 words extracted).
+The bundled script uses trafilatura for static HTML and automatically falls back to a headless Chromium (via Playwright) when a page returns sparse content -- so React, Vue, and Angular SPAs work the same way as plain HTML pages. Authenticated pages still won't work; the headless browser uses a fresh profile with no cookies.
 
-Flags: `--dry-run` to preview, `--crawl` for multi-page, `--max-pages N` to limit crawl, `--no-links` to strip hyperlinks, `--exclude /pattern/` to filter URLs, `--no-exclude` to disable default filtering.
+Flags: `--dry-run` to preview, `--crawl` for multi-page, `--max-pages N` to limit crawl, `--no-links` to strip hyperlinks, `--exclude /pattern/` to filter URLs, `--no-exclude` to disable default filtering, `--render` to force browser rendering, `--no-render` to disable the JS fallback for speed.
 
 ---
 
