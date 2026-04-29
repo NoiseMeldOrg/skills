@@ -97,10 +97,16 @@ def fetch_via_curl(url, timeout_seconds=_CURL_TIMEOUT_SECONDS,
     Curl's TLS fingerprint isn't on the blocklist, so this path succeeds on
     Cloudflare-fronted Mintlify/GitBook/Docusaurus sites where requests gets
     a 403.
+
+    --compressed asks curl to advertise `Accept-Encoding: gzip,deflate,br` and
+    transparently decode the response. Without it, origins that default to
+    Brotli/gzip return the raw compressed bytes, which trafilatura/Readability
+    will dutifully "extract" as gibberish. Sannysoft and many CDN-fronted
+    sites do this.
     """
     try:
         result = subprocess.run(
-            ["curl", "-sL", "--max-time", str(timeout_seconds),
+            ["curl", "-sL", "--compressed", "--max-time", str(timeout_seconds),
              "-A", user_agent, url],
             capture_output=True, text=True,
             timeout=timeout_seconds + 5,
@@ -161,6 +167,33 @@ def fetch_rendered(url, timeout_ms=30000, wait_until="domcontentloaded"):
         if "Executable doesn't exist" in msg or "playwright install" in msg:
             raise ChromiumMissing() from exc
         raise
+
+
+def _looks_like_html(s):
+    """Sanity-check that a fetcher returned decoded HTML, not raw compressed bytes.
+
+    trafilatura.fetch_url uses urllib3 without enabling brotli decoding, so
+    sites that serve `Content-Encoding: br` (sannysoft, many CDN-fronted
+    pages) hand back raw brotli bytes that look superficially like content
+    -- they have non-zero length, and Readability will dutifully "extract"
+    nonsense words from them, clearing the cascade's word-count threshold.
+    Result: the curl/Playwright steps never run.
+
+    A real HTML response always contains angle brackets and is almost
+    entirely printable. Compressed binary has neither property.
+    """
+    if not s:
+        return False
+    sample = s[:4000]
+    if "<" not in sample or ">" not in sample:
+        return False
+    non_printable = sum(
+        1 for c in sample
+        if ord(c) < 32 and c not in "\n\r\t"
+    )
+    if non_printable > len(sample) * 0.02:
+        return False
+    return True
 
 
 def _extract_from_html(html, config, include_links, include_images, include_tables):
@@ -339,6 +372,12 @@ def fetch_and_extract(url, config=None, include_links=True, include_images=False
             continue
 
         if not html:
+            continue
+
+        if not _looks_like_html(html):
+            print(f"  ({label} returned non-HTML bytes -- likely brotli/gzip "
+                  f"the fetcher couldn't decode; advancing cascade)",
+                  file=sys.stderr)
             continue
 
         content, metadata = _extract_with_readability_fallback(
@@ -530,11 +569,11 @@ def discover_pages(start_url, config=None, max_pages=50, exclude_patterns=None,
         downloaded = None
         if render != "always":
             downloaded = trafilatura.fetch_url(start_url, config=config)
-            if downloaded:
+            if downloaded and _looks_like_html(downloaded):
                 urls = _extract_same_domain_links(downloaded, start_url, domain)
             if not urls:
                 downloaded = fetch_via_curl(start_url)
-                if downloaded:
+                if downloaded and _looks_like_html(downloaded):
                     urls = _extract_same_domain_links(downloaded, start_url, domain)
 
         # Static returned nothing useful: probably a JS-only shell. Render it.
@@ -623,10 +662,13 @@ def dry_run(url, crawl=False, render="auto", scope=True, fetcher="auto",
         except Exception as exc:
             print(f"  ({label} fetch failed: {exc})", file=sys.stderr)
             continue
-        if html:
+        if html and _looks_like_html(html):
             downloaded = html
             used_label = label
             break
+        elif html:
+            print(f"  ({label} returned non-HTML bytes; advancing)",
+                  file=sys.stderr)
 
     if not downloaded:
         print("ERROR: Could not fetch URL via any static fetcher "

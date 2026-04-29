@@ -12,7 +12,7 @@ One install command, every supported agent picks it up:
 npx skills add https://github.com/NoiseMeldOrg/skills --skill extract-book
 ```
 
-Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, or `clear-and-concise-humanization`. Add `-g` to install globally, or omit for project-only.
+Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, or `clear-and-concise-humanization`. Add `-g` to install globally, or omit for project-only.
 
 Update later with `npx skills update`. List installed skills with `npx skills list`.
 
@@ -31,6 +31,7 @@ Install the skills you want:
 /plugin install extract-study@noisemeld-skills
 /plugin install extract-transcript@noisemeld-skills
 /plugin install extract-webpage@noisemeld-skills
+/plugin install obscura-scraper-crawler@noisemeld-skills
 /plugin install clear-and-concise-humanization@noisemeld-skills
 ```
 
@@ -53,6 +54,7 @@ ln -s ~/skills/skills/extract-book ~/.claude/skills/
 ln -s ~/skills/skills/extract-study ~/.claude/skills/
 ln -s ~/skills/skills/extract-transcript ~/.claude/skills/
 ln -s ~/skills/skills/extract-webpage ~/.claude/skills/
+ln -s ~/skills/skills/obscura-scraper-crawler ~/.claude/skills/
 ln -s ~/skills/skills/clear-and-concise-humanization ~/.claude/skills/
 ```
 
@@ -77,6 +79,8 @@ playwright install chromium
 ```
 
 `extract-book` and `extract-study` use `pdfplumber`. `extract-transcript` uses `youtube_transcript_api` when fetching from YouTube URLs (pasted transcripts need nothing). `extract-webpage` uses `trafilatura` for static HTML and falls back to `playwright` (with a bundled Chromium) for JavaScript-rendered pages.
+
+`obscura-scraper-crawler` is a separate path for sites behind Cloudflare/bot walls. It needs `trafilatura`, `readability-lxml`, `markdownify`, `lxml`, `playwright`, and the [obscura](https://github.com/h4ckf0r0day/obscura/releases) binary on PATH. It uses Playwright purely as a CDP client to drive `obscura serve`, so you do NOT need `playwright install` -- obscura ships its own browser engine.
 
 ---
 
@@ -127,6 +131,22 @@ For full-site crawls, add `--crawl` to discover and extract all pages on the dom
 The bundled script uses trafilatura for static HTML and automatically falls back to a headless Chromium (via Playwright) when a page returns sparse content -- so React, Vue, and Angular SPAs work the same way as plain HTML pages. Authenticated pages still won't work; the headless browser uses a fresh profile with no cookies.
 
 Flags: `--dry-run` to preview, `--crawl` for multi-page, `--max-pages N` to limit crawl, `--no-links` to strip hyperlinks, `--exclude /pattern/` to filter URLs, `--no-exclude` to disable default filtering, `--render` to force browser rendering, `--no-render` to disable the JS fallback for speed.
+
+---
+
+### obscura-scraper-crawler
+
+Sister skill to extract-webpage for Cloudflare and bot-walled sites. Routes every fetch through the [obscura](https://github.com/h4ckf0r0day/obscura) headless browser binary with stealth on by default (per-session fingerprint randomization, `navigator.webdriver = undefined`, native-function masking, plus a 3,520-domain tracker blocklist). Same Markdown output format as extract-webpage so the two are directly comparable on the same URL.
+
+Give Claude a URL with "use obscura" or "scrape with stealth," or run `/obscura-scraper-crawler https://example.com/article`. Same dry-run-then-extract-then-post-process flow as extract-webpage. Crawl mode supported via `--crawl`.
+
+Stealth defeats most passive client-side bot checks. It does NOT defeat active interstitials with behavioral analysis (Turnstile, hCaptcha) -- those need a real browser session. For default URL extraction prefer extract-webpage (faster, lighter, no binary dep).
+
+Architecture: the script starts `obscura serve --stealth` once and connects via Playwright's `chromium.connect_over_cdp(...)`. One obscura process backs the whole run, cookies persist across pages, and Playwright provides the navigation API while obscura provides the stealth surface (`navigator.webdriver: undefined`, realistic UA, `window.chrome` present).
+
+Requires the obscura binary on PATH (prebuilt releases at https://github.com/h4ckf0r0day/obscura/releases) plus `trafilatura`, `readability-lxml`, `markdownify`, `lxml`, and `playwright`. You do NOT need to run `playwright install` -- CDP connections don't need a Chromium download.
+
+Flags: `--dry-run`, `--crawl`, `--max-pages N`, `--no-stealth`, `--wait-until {load,domcontentloaded,networkidle0}`, `--obscura-wait N`, `--obscura-selector CSS`, `--obscura-binary PATH`, `--obscura-port N`, `--no-links`, `--include-images`, `--exclude /pat/`, `--no-exclude`, `--no-scope`, `--delay N`, `-o path.md`.
 
 ---
 

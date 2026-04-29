@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Custom skills for document extraction and writing",
-    "version": "1.0.23"
+    "version": "1.0.24"
   },
   "plugins": [
     {
@@ -52,6 +52,15 @@
       "strict": false,
       "skills": [
         "./skills/extract-webpage"
+      ]
+    },
+    {
+      "name": "obscura-scraper-crawler",
+      "description": "Extract web pages into structured Markdown using the obscura headless browser binary with stealth on by default. For sites behind Cloudflare/bot walls where extract-webpage falls down. Single pages or full-site crawls. Requires the obscura binary on PATH plus trafilatura.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/obscura-scraper-crawler"
       ]
     },
     {

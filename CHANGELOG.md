@@ -7,6 +7,14 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.23
+
+Preserve hand-edited entries in CHANGELOG.md
+
+- Previously the commit-msg hook regenerated the entire changelog from git log on every commit, which silently clobbered any entry that had been polished after the fact (e.g. the curated 1.0.22 release entry got reverted to its raw commit-body form on the next commit). The hook now only writes entries that do not already exist in CHANGELOG.md: the pending commit's entry, plus any historical version missing from the file. Existing entries are preserved verbatim.
+- To re-derive an entry from git log (e.g. after a rebase reworded a past commit), delete that version's section from CHANGELOG.md and the next commit will regenerate it.
+- Updates CLAUDE.md to reflect the new behavior.
+
 ## 1.0.22
 
 Fix two dry-run flag-handling issues in extract-webpage
