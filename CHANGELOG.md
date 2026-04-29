@@ -7,6 +7,19 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.24
+
+Add obscura-scraper-crawler skill plus extract-webpage compressed-response fixes
+
+- New skill obscura-scraper-crawler: sister to extract-webpage that runs obscura serve once and connects via Playwright's chromium.connect_over_cdp. Same Markdown output format as extract-webpage so outputs are diffable, stealth on by default, single-page and crawl modes both supported. ObscuraSession context manager handles the obscura process lifecycle and CDP connection.
+- Add scripts/stealth_assertion.py: deterministic regression test that runs vanilla headless Chromium and obscura+stealth side by side against six observable browser-surface probes (navigator.webdriver, HeadlessChrome UA, chrome.loadTimes, chrome.csi, plugins.length, event.isTrusted on dispatched events). Prints a Markdown pass/fail table, exits non-zero on regression.
+- Add docs/obscura-evaluation.md: strategic decision record covering the A/B methodology, the seven real-world URLs tested, the finding of zero pages where obscura succeeded and extract-webpage failed, the finding that obscura concretely beats vanilla Chromium on all six surface probes, and the decision to keep both skills.
+- Fix brotli/gzip handling in extract-webpage's fetch_via_curl by adding --compressed. Without it, sites serving Content-Encoding: br (sannysoft, many CDN-fronted pages) handed back raw compressed bytes.
+- Add _looks_like_html validator to extract-webpage's cascade. trafilatura.fetch_url returns brotli garbage that was clearing the cascade's word-count threshold via Readability, so curl and Playwright steps never ran. The validator detects non-HTML bytes and forces advance.
+- Update CONTRIBUTING.md with the bot-detection-page testing procedure (URL list, A/B commands, expected outcomes, etiquette) and the stealth-surface assertion subsection.
+- Update README.md with the new skill section, install lines, and Python-deps note. Playwright is required for obscura-scraper-crawler but `playwright install` is NOT — CDP connections don't need a Chromium download.
+- Add obscura-scraper-crawler entry to .claude-plugin/marketplace.json. Deliberately NOT added to the extraction-skills bundle: the bundle implies everything works after pip install, and obscura's binary dep would silently break that promise.
+
 ## 1.0.23
 
 Preserve hand-edited entries in CHANGELOG.md
@@ -27,23 +40,23 @@ Fix two dry-run flag-handling issues in extract-webpage
 
 Harden extract-webpage against Cloudflare and JS-rendered docs sites
 
-- - Add curl-based fetcher (fetch_via_curl) that bypasses the TLS-fingerprint block Cloudflare applies to the Python requests library. Mintlify, GitBook, Docusaurus v3, and Nextra sites now extract via static fetch instead of falling through to Playwright.
-- - Change Playwright default wait condition from networkidle to domcontentloaded with a brief content-selector poll. Mintlify-style SPAs keep long-lived analytics websockets open so networkidle never fires and Playwright timed out at 30s with no content; domcontentloaded sidesteps that. networkidle is kept as a last-resort step in the cascade.
-- - Reorder fetch_and_extract as a cascade: trafilatura.fetch_url -> curl -> Playwright(domcontentloaded) -> Playwright(networkidle). Returns the first result clearing the 50-word threshold; falls back to the best sub-threshold result. Most pages succeed at step 1 or 2 so Playwright is invoked only for genuine SPAs.
-- - Add --fetcher {auto,requests,curl,playwright} to force a specific fetcher and --wait-until {domcontentloaded,load,networkidle} to override the Playwright wait condition.
-- - Add a curl-based sitemap fallback to discover_pages. trafilatura.sitemaps.sitemap_search uses requests internally and is blocked by Cloudflare; the fallback fetches /sitemap.xml (and common variants) via curl and expands sitemap-indexes one level. docs.dune.com discovery now finds 1425 URLs that trafilatura returned 0 for.
-- - Make crawl link discovery cascade through curl too, so JS-only fallback to Playwright doesn't fire when curl can supply the start page's links.
-- - Update dry_run to walk the static portion of the cascade and report which fetcher succeeded.
-- - Update SKILL.md to document the cascade, the new flags, and to soften the Cloudflare and JS-rendered limitations now that the cascade handles most cases.
+- Add curl-based fetcher (fetch_via_curl) that bypasses the TLS-fingerprint block Cloudflare applies to the Python requests library. Mintlify, GitBook, Docusaurus v3, and Nextra sites now extract via static fetch instead of falling through to Playwright.
+- Change Playwright default wait condition from networkidle to domcontentloaded with a brief content-selector poll. Mintlify-style SPAs keep long-lived analytics websockets open so networkidle never fires and Playwright timed out at 30s with no content; domcontentloaded sidesteps that. networkidle is kept as a last-resort step in the cascade.
+- Reorder fetch_and_extract as a cascade: trafilatura.fetch_url -> curl -> Playwright(domcontentloaded) -> Playwright(networkidle). Returns the first result clearing the 50-word threshold; falls back to the best sub-threshold result. Most pages succeed at step 1 or 2 so Playwright is invoked only for genuine SPAs.
+- Add --fetcher {auto,requests,curl,playwright} to force a specific fetcher and --wait-until {domcontentloaded,load,networkidle} to override the Playwright wait condition.
+- Add a curl-based sitemap fallback to discover_pages. trafilatura.sitemaps.sitemap_search uses requests internally and is blocked by Cloudflare; the fallback fetches /sitemap.xml (and common variants) via curl and expands sitemap-indexes one level. docs.dune.com discovery now finds 1425 URLs that trafilatura returned 0 for.
+- Make crawl link discovery cascade through curl too, so JS-only fallback to Playwright doesn't fire when curl can supply the start page's links.
+- Update dry_run to walk the static portion of the cascade and report which fetcher succeeded.
+- Update SKILL.md to document the cascade, the new flags, and to soften the Cloudflare and JS-rendered limitations now that the cascade handles most cases.
 - Verified end-to-end against docs.dune.com (Mintlify+Cloudflare; 183 URLs discovered post-exclude, sample crawl extracts cleanly without Playwright), docs.anthropic.com (curl path), and en.wikipedia.org/wiki/Bitcoin (no regression on plain HTML).
 
 ## 1.0.20
 
 Add Readability fallback and path-scoped crawl to extract-webpage
 
-- - Fall back to Mozilla's Readability (via readability-lxml + markdownify) when trafilatura returns content but strips all the page's headings -- a failure mode common to SPAs whose content sits in generic divs without semantic markup. The fallback fires only when trafilatura returns zero headings AND Readability returns at least three, AND Readability's word count is within 20% of trafilatura's, so it doesn't trigger on normal articles.
-- - Default --crawl to path-scoped discovery: when starting at /docs, only follow links whose path starts with /docs. Cuts dApp-style sites that share a domain between docs and an app UI from dozens of discovered URLs to just the relevant ones. Pass --no-scope to disable when peer sections (e.g. /security as a sibling of /docs) hold related docs.
-- - Document both fallbacks in SKILL.md and update install instructions to include readability-lxml + markdownify.
+- Fall back to Mozilla's Readability (via readability-lxml + markdownify) when trafilatura returns content but strips all the page's headings -- a failure mode common to SPAs whose content sits in generic divs without semantic markup. The fallback fires only when trafilatura returns zero headings AND Readability returns at least three, AND Readability's word count is within 20% of trafilatura's, so it doesn't trigger on normal articles.
+- Default --crawl to path-scoped discovery: when starting at /docs, only follow links whose path starts with /docs. Cuts dApp-style sites that share a domain between docs and an app UI from dozens of discovered URLs to just the relevant ones. Pass --no-scope to disable when peer sections (e.g. /security as a sibling of /docs) hold related docs.
+- Document both fallbacks in SKILL.md and update install instructions to include readability-lxml + markdownify.
 
 ## 1.0.19
 
@@ -152,22 +165,22 @@ Broaden README to reflect cross-agent install via skills CLI
 
 Document distribution channels and release strategy in CLAUDE.md
 
-- - Cover the three working install paths (plugin marketplace, npx skills, symlink)
-- - Note the Anthropic plugin directory requires per-plugin restructuring; defer
-- - Note mcpmarket likely auto-crawls; let it index organically
-- - Releases only at milestones, not every commit
+- Cover the three working install paths (plugin marketplace, npx skills, symlink)
+- Note the Anthropic plugin directory requires per-plugin restructuring; defer
+- Note mcpmarket likely auto-crawls; let it index organically
+- Releases only at milestones, not every commit
 
 ## 1.0.12
 
 Prepare skills for public release
 
-- - Strip personal medical case from extract-transcript SKILL; relevance
+- Strip personal medical case from extract-transcript SKILL; relevance
 - section is now opt-in via project CLAUDE.md
-- - Genericize archive/docs filing paths in all four extract skills
-- - Drop --render-images claim from extract-study (script never implemented)
-- - Soften extract-study metadata claim: authors and journal are manual
-- - Fix extract-webpage TOC anchors with a GitHub-compatible slugify
-- - Add CLAUDE.md describing the marketplace, automation, and hook setup
+- Genericize archive/docs filing paths in all four extract skills
+- Drop --render-images claim from extract-study (script never implemented)
+- Soften extract-study metadata claim: authors and journal are manual
+- Fix extract-webpage TOC anchors with a GitHub-compatible slugify
+- Add CLAUDE.md describing the marketplace, automation, and hook setup
 
 ## 1.0.11
 
@@ -233,10 +246,10 @@ Rewrite README: humanize prose, add skill invocation guidance
 Document installation methods and per-skill usage
 
 - README now covers:
-- - Three install methods (plugin marketplace, global symlink, project-level)
-- - Python dependency setup
-- - Per-skill documentation with invoke patterns, options, and examples
-- - Update instructions for both install methods
+- Three install methods (plugin marketplace, global symlink, project-level)
+- Python dependency setup
+- Per-skill documentation with invoke patterns, options, and examples
+- Update instructions for both install methods
 
 ## 1.0.3
 
@@ -251,11 +264,11 @@ Allow individual skill installation alongside bundles
 Add plugin marketplace support and restructure to official pattern
 
 - Restructured to match anthropics/skills convention:
-- - Skills moved under skills/ directory
-- - Added .claude-plugin/marketplace.json for plugin install support
-- - Two plugin groups: writing-skills and extraction-skills
-- - Updated README with plugin marketplace install instructions
-- - Added MIT license
+- Skills moved under skills/ directory
+- Added .claude-plugin/marketplace.json for plugin install support
+- Two plugin groups: writing-skills and extraction-skills
+- Updated README with plugin marketplace install instructions
+- Added MIT license
 - Users can now install via:
 - /plugin marketplace add NoiseMeldOrg/skills
 - /plugin install writing-skills@noisemeld-skills
@@ -265,9 +278,9 @@ Add plugin marketplace support and restructure to official pattern
 Initial commit: five custom Claude Code skills
 
 - Skills:
-- - clear-and-concise-humanization: Strunk + Wikipedia AI detection + ten-pass editing
-- - explain-code: Visual diagrams and analogies for code explanation
-- - extract-book: PDF book to structured Markdown with chapter detection
-- - extract-study: Research paper PDF to IMRaD Markdown with DOI/PMID extraction
-- - extract-transcript: YouTube/podcast transcript to structured Markdown summary
+- clear-and-concise-humanization: Strunk + Wikipedia AI detection + ten-pass editing
+- explain-code: Visual diagrams and analogies for code explanation
+- extract-book: PDF book to structured Markdown with chapter detection
+- extract-study: Research paper PDF to IMRaD Markdown with DOI/PMID extraction
+- extract-transcript: YouTube/podcast transcript to structured Markdown summary
 
