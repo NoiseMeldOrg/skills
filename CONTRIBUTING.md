@@ -101,7 +101,7 @@ Findings worth knowing:
 ## Versioning and CHANGELOG (automatic — don't fight the hooks)
 
 - Version is `1.0.<commit-count-on-main>`, rewritten into `.claude-plugin/marketplace.json` by the pre-commit hook.
-- `CHANGELOG.md` is regenerated from `git log` by the commit-msg hook.
+- `CHANGELOG.md` is regenerated from `git log` by the commit-msg hook, then folded into the just-made commit by the post-commit hook (via `git commit --amend --no-verify`). Each commit fully contains its own CHANGELOG entry — no one-commit lag.
 - **Never hand-edit** `metadata.version` or any entry in `CHANGELOG.md` — both get overwritten on the next commit.
 - Check the current version without writing: `./scripts/set_version.sh --check`.
 

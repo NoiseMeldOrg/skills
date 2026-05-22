@@ -7,6 +7,24 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.29
+
+Add post-commit hook to fold CHANGELOG entries into their own commit
+
+- The commit-msg hook regenerates CHANGELOG.md from git log plus the pending commit message, but it runs AFTER git builds the commit object from the index. So any CHANGELOG changes commit-msg stages land in the NEXT commit, not the current one. This is the one-commit lag that produced orphaned CHANGELOG entries (e.g., v1.0.25 was missing from its own commit, and so was v1.0.27 until the dedicated backfill in v1.0.28).
+- The new .githooks/post-commit fixes this. After every commit, the hook checks whether CHANGELOG.md differs from HEAD (which means commit-msg staged a regeneration that didn't land in this commit). If so, it stages CHANGELOG.md and runs git commit --amend --no-edit --no-verify to fold the entry into the just-made commit.
+- Loop prevention: --no-verify skips pre-commit and commit-msg, so no CHANGELOG regeneration loop. post-commit DOES run again after the amend (post-commit always runs on amend), but the diff check returns clean the second time (HEAD now matches working tree), and the hook exits.
+- Caveat: each commit's hash changes between the initial commit and the post-commit amend. Any external system listening for commit creation events (CI, webhooks) might briefly see a hash that doesn't exist after the amend. For this repo's solo-developer workflow, that's irrelevant.
+- CONTRIBUTING.md updated to document the new hook in the Versioning and CHANGELOG section.
+- This commit demonstrates the fix: the v1.0.29 entry the commit-msg hook generates for this commit will be folded into this commit by the new post-commit hook, rather than staged for v1.0.30.
+
+## 1.0.28
+
+Backfill 1.0.27 CHANGELOG entry
+
+- The commit-msg hook generates each commit's CHANGELOG entry after the commit is built, which means the entry gets staged for the following commit instead of landing in its own. b59612f shipped to GitHub without its v1.0.27 entry for this reason. This commit lands that entry.
+- The same lag carries forward — this commit's v1.0.28 entry will stage for the next one. That's the hook's design, not a bug to fix here.
+
 ## 1.0.27
 
 Add accountability-panel skill

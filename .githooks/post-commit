@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Post-commit: fold commit-msg's CHANGELOG.md regeneration into the
+# just-made commit, so each commit fully contains its own CHANGELOG entry.
+#
+# Background: the commit-msg hook runs AFTER git builds the commit object
+# from the index. So when commit-msg regenerates CHANGELOG.md and stages
+# it, the changes go into the NEXT commit's staging, not the current one.
+# This hook closes that gap by amending the just-made commit with --no-verify
+# (which skips pre-commit and commit-msg, so no regeneration loop).
+#
+# Loop prevention: after the amend, post-commit runs again. The diff check
+# (HEAD vs working tree for CHANGELOG.md) returns clean, and we exit.
+
+set -euo pipefail
+
+if git diff --quiet HEAD -- CHANGELOG.md; then
+    # Working tree matches HEAD. Either commit-msg didn't change CHANGELOG,
+    # or this is the second invocation after our amend. Nothing to do.
+    exit 0
+fi
+
+# commit-msg generated changes that didn't make it into the just-made
+# commit. Fold them in via amend.
+git add CHANGELOG.md
+git commit --amend --no-edit --no-verify >/dev/null
+echo "CHANGELOG entry folded into commit via post-commit amend."
