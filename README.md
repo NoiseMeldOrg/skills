@@ -1,6 +1,6 @@
 # NoiseMeld Skills
 
-Agent skills for extracting documents and editing prose. Built on the [Agent Skills](https://agentskills.io) open standard, so they install cleanly into Claude Code, Cursor, Gemini CLI, Goose, OpenCode, Windsurf, and other compatible agents.
+Agent skills for extracting documents, editing prose, and structured critique. Built on the [Agent Skills](https://agentskills.io) open standard, so they install cleanly into Claude Code, Cursor, Gemini CLI, Goose, OpenCode, Windsurf, and other compatible agents.
 
 ## Installation
 
@@ -12,7 +12,7 @@ One install command, every supported agent picks it up:
 npx skills add https://github.com/NoiseMeldOrg/skills --skill extract-book
 ```
 
-Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, or `clear-and-concise-humanization`. Add `-g` to install globally, or omit for project-only.
+Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, `clear-and-concise-humanization`, or `accountability-panel`. Add `-g` to install globally, or omit for project-only.
 
 Update later with `npx skills update`. List installed skills with `npx skills list`.
 
@@ -33,6 +33,7 @@ Install the skills you want:
 /plugin install extract-webpage@noisemeld-skills
 /plugin install obscura-scraper-crawler@noisemeld-skills
 /plugin install clear-and-concise-humanization@noisemeld-skills
+/plugin install accountability-panel@noisemeld-skills
 ```
 
 Or grab a bundle:
@@ -56,7 +57,10 @@ ln -s ~/skills/skills/extract-transcript ~/.claude/skills/
 ln -s ~/skills/skills/extract-webpage ~/.claude/skills/
 ln -s ~/skills/skills/obscura-scraper-crawler ~/.claude/skills/
 ln -s ~/skills/skills/clear-and-concise-humanization ~/.claude/skills/
+ln -s ~/skills/skills/accountability-panel ~/.claude/skills/
 ```
+
+**Note for `accountability-panel`:** the skill is meant to be customized — `personas.md` next to `SKILL.md` is where you replace the four shipped defaults with real people whose judgment you trust. If you symlink, edits land in this repo. If you'd rather keep your customized `personas.md` private, copy the skill into `~/.claude/skills/accountability-panel/` instead of symlinking and edit there. See the privacy note at the bottom of `personas.md`.
 
 Pull the repo to update. Symlinks pick up changes immediately.
 
@@ -187,6 +191,22 @@ This skill merges two open-source skills and three reference sources into one:
 - **AI-tell word lists** -- tiered vocabulary lists (Tier 1 red flags, Tier 2 cluster words) compiled from the above sources and extended with observed model-generation patterns.
 
 The merge cut the overlap between writing-clearly-and-concisely and humanize-writing, expanded from 8 passes to 10, and threaded Strunk rule citations into each pass so the writing principles and the AI-tell detection reinforce each other.
+
+---
+
+### accountability-panel
+
+Runs an idea past a panel of named personas who push back rather than encourage. Refuses to rescue weak ideas — names the pattern that generated them (avoidance, shiny-object syndrome, validation-seeking, sunk-cost ratification) instead of finding angles to make them work.
+
+Trigger with "Panel," "Team," a persona name, or any subgroup keyword defined in `personas.md`. Auto-triggers when the user is clearly seeking validation on a decision ("should I…," "is this a good idea…," "I'm leaning toward…") and an honest gut-check would serve them better than encouragement.
+
+The skill follows five behavioral rules that separate it from generic LLM feedback loops: no rescue (refuse to find angles that make a weak idea work), verdict first (the opener stakes a clear position before the discussion), name the behavior (call out the pattern in play), accountability turn (at least once per exchange, a persona turns the question back on the user), and hard recommendation (end with a single directive, not a menu).
+
+Ships with [Craig Doe AI](https://youtube.com/@craigdoesai)'s four-persona default (Partner, Advisor, Colleague, Friend) so it's useful immediately. The skill is meaningfully better when you replace those with three to five real people whose judgment you trust — edit `personas.md` next to `SKILL.md`. An optional Backstory field preserves the raw context of who each person is to you, which keeps each voice from collapsing back into an archetype.
+
+**Privacy note:** once you customize `personas.md` with real people from your life, that file becomes journal-grade personal content. Keep your customized version in a private repo or local-only — not a public fork of this one. The skill ships with the same privacy note inside `personas.md` so anyone customizing it sees the warning.
+
+No Python dependencies. Pure markdown — `SKILL.md` and `personas.md`.
 
 ---
 

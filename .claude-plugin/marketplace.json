@@ -6,9 +6,18 @@
   },
   "metadata": {
     "description": "Custom skills for document extraction and writing",
-    "version": "1.0.26"
+    "version": "1.0.27"
   },
   "plugins": [
+    {
+      "name": "accountability-panel",
+      "description": "Structured-critique skill that runs ideas past a panel of named personas to push back on decisions, plans, and validation-seeking instead of finding angles to rescue weak ideas. Triggers on \"Panel,\" \"Team,\" a persona name, or any subgroup keyword. Auto-fires when the user is seeking validation. Customize personas.md with three to five real people whose judgment you trust. No Python deps.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/accountability-panel"
+      ]
+    },
     {
       "name": "clear-and-concise-humanization",
       "description": "Write and edit prose that is clear, forceful, and unrecognizable as machine-generated. Ten editing passes combining Strunk's composition rules with Wikipedia AI-tell detection.",

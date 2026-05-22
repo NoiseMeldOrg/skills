@@ -7,6 +7,26 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.26
+
+Harden extract-study against NIHMS/PMC author manuscripts and reversed-cell PDFs
+
+- extract_study_pdf.py: clean_text now filters NIHMS chrome — "HHS Public Access", "Author manuscript", sidebar Author/Manuscript fragments, "<author> et al. Page N" footers, the "...available in PMC..." cite, and "Published in final edited form as".
+- extract_study_pdf.py: title detection now skips that same cover matter, glues up to 5 wrapped title lines, joins hyphenated line breaks (cross- + sectional → cross-sectional), and stops at author lines containing a degree token.
+- extract_study_pdf.py: new reversed-cell heuristic emits a WARNING at extraction time when 10+ right-to-left cells are detected, telling the user to retry with --layout or fall back to a PMC HTML cross-check.
+- extract_study_pdf.py: added five SECTION_ALIASES — Acknowledgments, Funding, Conflicts of Interest, Data Availability, and the BMJ-style "What is Known" / "What This Study Adds" sidebars.
+- SKILL.md: setup snippet no longer suppresses pip errors with 2>/dev/null. Checks for pdfplumber import before installing so missing toolchains fail loud rather than as a confusing ModuleNotFoundError.
+- SKILL.md: Step 1 now documents what the reversed-cell warning means and what to do.
+- SKILL.md: new troubleshooting entries for "Reversed table cells" and "NIHMS / PMC author manuscripts" — the latter promotes PMC HTML cross-check from "consider pulling references" to a default step for nihms-*.pdf files.
+- SKILL.md: section-detection list updated to match the new aliases.
+- Verified via dry run on a NIHMS PDF: correct title detected, 12 sections found (was 6), reversed-cell warning fires when applicable. Changes live via the existing symlink install. Reference cross-check: Colgan 2022 (PMC8977103 / PMID 34651401).
+
+## 1.0.25
+
+Polish 1.0.24 changelog entry
+
+- Strip the duplicated leading dashes from the auto-generated bullets so the changelog renders cleanly on GitHub. Content unchanged.
+
 ## 1.0.24
 
 Add obscura-scraper-crawler skill plus extract-webpage compressed-response fixes
