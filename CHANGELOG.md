@@ -7,6 +7,19 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.27
+
+Add accountability-panel skill
+
+- New skill skills/accountability-panel/: a structured-critique skill that runs ideas past a panel of named personas to push back on decisions, plans, and validation-seeking rather than rescue them. Adapted from Craig Doe AI's Accountability Panel concept (https://youtube.com/@craigdoesai); his original was a Google Doc, not a published skill, so this is a clean implementation.
+- Five behavioral rules define what separates this skill from generic LLM feedback loops: no rescue (refuse to find angles that make a weak idea work), verdict first (the opener stakes a clear position before the discussion), name the behavior (call out avoidance, shiny-object syndrome, validation-seeking, and sunk-cost ratification when in play), accountability turn (at least once per exchange, a persona turns the question back on the user), and hard recommendation (end with a single directive, not a menu).
+- Ships with four working defaults (Partner, Advisor, Colleague, Friend) so the skill is useful out of the box. The skill is meaningfully better when the user replaces those with three to five real people whose judgment they trust — personas.md next to SKILL.md is where customization happens, including an optional Backstory field that preserves the raw context of who each person is.
+- Triggers: "Panel" or "Team" call all defined personas; any persona name or user-defined subgroup keyword calls a subset; the skill auto-triggers when the user is clearly seeking validation on a decision ("should I…," "thinking about…," "is this a good idea…," "I'm leaning toward…") and an honest gut-check would serve them better than encouragement.
+- Privacy note in personas.md: once the user customizes the file with real people from their life, it becomes journal-grade personal content. The file ships with explicit guidance to keep customized versions in a private repo or local-only — not in a public fork of this repo.
+- No Python dependencies. Pure markdown — SKILL.md and personas.md, no scripts directory.
+- Added .claude-plugin/marketplace.json entry, alphabetized first in the plugins list. Deliberately NOT added to the extraction-skills bundle (different domain).
+- Updated README.md: top-line description expanded from "extracting documents and editing prose" to "extracting documents, editing prose, and structured critique"; install commands list extended with accountability-panel; manual-install symlink list extended with a callout about the customization workflow; new per-skill section added at the end of the Skills section.
+
 ## 1.0.26
 
 Harden extract-study against NIHMS/PMC author manuscripts and reversed-cell PDFs
