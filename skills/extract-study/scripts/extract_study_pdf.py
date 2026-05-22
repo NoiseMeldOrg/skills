@@ -23,16 +23,23 @@ import pdfplumber
 
 # Canonical section names and the aliases that map to them.
 SECTION_ALIASES = [
-    ("Abstract",     [r"abstract", r"summary"]),
-    ("Introduction", [r"introduction", r"background"]),
-    ("Methods",      [r"methods", r"materials and methods", r"methodology",
-                      r"patients and methods", r"study design", r"methods and materials",
-                      r"subjects and methods", r"experimental procedures"]),
-    ("Results",      [r"results", r"findings"]),
-    ("Discussion",   [r"discussion"]),
-    ("Conclusion",   [r"conclusion", r"conclusions", r"concluding remarks"]),
-    ("References",   [r"references", r"bibliography", r"literature cited",
-                      r"works cited"]),
+    ("Abstract",          [r"abstract", r"summary"]),
+    ("Introduction",      [r"introduction", r"background"]),
+    ("Methods",           [r"methods", r"materials and methods", r"methodology",
+                           r"patients and methods", r"study design", r"methods and materials",
+                           r"subjects and methods", r"experimental procedures"]),
+    ("Results",           [r"results", r"findings"]),
+    ("Discussion",        [r"discussion"]),
+    ("Conclusion",        [r"conclusion", r"conclusions", r"concluding remarks"]),
+    ("Acknowledgments",   [r"acknowledgments", r"acknowledgements"]),
+    ("Funding",           [r"funding", r"funding information", r"funding sources"]),
+    ("Conflicts of Interest", [r"conflict of interest", r"conflicts of interest",
+                                r"competing interests", r"declaration of interests"]),
+    ("Data Availability", [r"data availability statement", r"data availability"]),
+    ("What is Known",     [r"what is known"]),
+    ("What This Study Adds", [r"what does this study add", r"what this study adds"]),
+    ("References",        [r"references", r"bibliography", r"literature cited",
+                           r"works cited"]),
 ]
 
 # Build a single regex for heading detection.
@@ -48,6 +55,24 @@ YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 PMID_RE = re.compile(r"\bPMID[:\s]*(\d{6,9})\b", re.IGNORECASE)
 PMCID_RE = re.compile(r"\bPMC\d{6,9}\b", re.IGNORECASE)
 
+# Page-header / footer noise found on NIHMS author manuscripts and similar
+# repeating chrome that the PDF text layer interleaves into the body.
+NOISE_LINE_PATTERNS = [
+    re.compile(r"^HHS Public Access$", re.IGNORECASE),
+    re.compile(r"^Author manuscript$", re.IGNORECASE),
+    re.compile(r"^Author$"),                                     # NIHMS sidebar fragment
+    re.compile(r"^Manuscript$"),                                  # NIHMS sidebar fragment
+    re.compile(r"^[A-Z][\w\s\-']+\set al\.\s+Page\s+\d+$"),       # "Colgan et al. Page 4"
+    re.compile(r".*Author manuscript;\s*available in PMC.*", re.IGNORECASE),
+    re.compile(r"^Published in final edited form as:?\s*$", re.IGNORECASE),
+    re.compile(r"^Page\s+\d+\s+of\s+\d+$", re.IGNORECASE),
+]
+
+# Tokens that look like correlation-table cells that pdfplumber returned in
+# right-to-left order (e.g. "**82.0" instead of "0.28**", "*02.0−" instead of
+# "−0.20*"). Used as a heuristic to suggest --layout retry.
+REVERSED_CELL_RE = re.compile(r"^\*{1,2}\d+\.\d+−?$|^−?\*{1,2}\d{1,2}\.\d{1,2}$")
+
 
 def extract_pages(pdf_path: str, use_layout: bool = False) -> list[str]:
     pages = []
@@ -62,20 +87,28 @@ def extract_pages(pdf_path: str, use_layout: bool = False) -> list[str]:
 
 
 def clean_text(text: str) -> str:
-    """Light cleanup: drop standalone page numbers, collapse blank lines."""
+    """Drop standalone page numbers, NIHMS chrome, and repeating page-header
+    pollution; collapse blank lines."""
     lines = text.split("\n")
     out = []
     for line in lines:
         s = line.strip()
         if re.match(r"^\d{1,4}$", s):
             continue
-        if re.match(r"^page\s+\d+\s+of\s+\d+$", s, re.IGNORECASE):
+        if any(p.match(s) for p in NOISE_LINE_PATTERNS):
             continue
         out.append(line.rstrip())
-    # Collapse 3+ blank lines to 2
     joined = "\n".join(out)
     joined = re.sub(r"\n{3,}", "\n\n", joined)
     return joined
+
+
+def detect_reversed_cells(text: str) -> int:
+    """Count tokens that look like correlation-table cells reversed
+    character-by-character (a known pdfplumber failure mode for some journals).
+    Returns the count so the caller can decide whether to warn."""
+    tokens = text.split()
+    return sum(1 for t in tokens if REVERSED_CELL_RE.match(t))
 
 
 def extract_metadata(pages: list[str]) -> dict:
@@ -109,8 +142,8 @@ def extract_metadata(pages: list[str]) -> dict:
     if m:
         meta["year"] = m.group(0)
 
-    # Title: longest non-trivial line in the first ~15 lines of page 1
-    # that isn't a journal header, DOI, or copyright
+    # Title: longest non-trivial line in the first ~25 lines of page 1
+    # that isn't a journal header, DOI, NIHMS cover matter, or copyright.
     if pages:
         first_lines = [l.strip() for l in pages[0].split("\n")[:25] if l.strip()]
         candidates = []
@@ -120,24 +153,41 @@ def extract_metadata(pages: list[str]) -> dict:
                 continue
             if any(skip in lower for skip in [
                 "doi", "copyright", "©", "http", "www.", "issn",
-                "received", "accepted", "published", "volume", "license",
+                "received", "accepted", "published in final", "volume", "license",
                 "open access", "original article", "review article",
+                "hhs public access", "author manuscript",
+                "available in pmc",
             ]):
                 continue
             if DOI_RE.search(line):
                 continue
             candidates.append(line)
         if candidates:
-            # Title is usually the first long-ish line, possibly spanning 2.
-            # Take the first candidate and any immediately following candidates
-            # that look like a continuation (start lowercase or are short).
+            # Title is usually the first long-ish line, possibly spanning up to
+            # 4–5 lines in long-titled papers. Glue continuations until we hit
+            # what looks like the author line (starts uppercase, contains commas
+            # and a degree token like "PhD" / "MD" / "MS").
             meta["title"] = candidates[0]
-            # Try to glue wrapped title lines
-            for nxt in candidates[1:3]:
-                if nxt and (nxt[0].islower() or len(nxt) < 60) and len(meta["title"]) < 120:
-                    meta["title"] = meta["title"] + " " + nxt
-                else:
+            for nxt in candidates[1:6]:
+                if not nxt:
                     break
+                # Stop at author lines.
+                if re.search(r",\s*(PhD|MD|MS|MSc|MPH|RN|DO|DDS|DVM|PharmD|MBBS)\b", nxt):
+                    break
+                # Continuation if it starts lowercase, ends with hyphen, or is
+                # short enough to plausibly be a title fragment.
+                looks_like_continuation = (
+                    nxt[0].islower()
+                    or meta["title"].rstrip().endswith("-")
+                    or len(nxt) < 80
+                )
+                if not looks_like_continuation:
+                    break
+                # Join hyphenated line-breaks without a space; otherwise add a space.
+                if meta["title"].rstrip().endswith("-"):
+                    meta["title"] = meta["title"].rstrip() + nxt
+                else:
+                    meta["title"] = meta["title"] + " " + nxt
 
     return meta
 
@@ -237,6 +287,17 @@ def main():
 
     pages = extract_pages(str(pdf_path), use_layout=args.layout)
     md, meta, sections = build_markdown(str(pdf_path), pages)
+
+    reversed_hits = detect_reversed_cells(md)
+    if reversed_hits >= 10 and not args.layout:
+        print(
+            f"WARNING: detected {reversed_hits} tokens that look like correlation-table\n"
+            f"cells extracted in right-to-left order (e.g. '**82.0' instead of '0.28**').\n"
+            f"This usually means a table was rendered with reversed text direction.\n"
+            f"Try rerunning with --layout, or reconstruct the affected table from the\n"
+            f"published HTML (e.g. PMC) before filing the .md.",
+            file=sys.stderr,
+        )
 
     if args.dry_run:
         print("=" * 60)

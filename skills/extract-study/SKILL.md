@@ -21,11 +21,14 @@ Convert research papers into clean Markdown with a metadata header, IMRaD sectio
 
 ## Setup
 
-Same venv as `extract-book`:
+Reuse `extract-book`'s `.venv` if it exists; otherwise create one in the working directory:
 
 ```bash
-source .venv/bin/activate && pip install pdfplumber 2>/dev/null
+[ -d .venv ] || python3 -m venv .venv
+source .venv/bin/activate && python -c "import pdfplumber" 2>/dev/null || pip install pdfplumber
 ```
+
+Don't suppress pip errors with `2>/dev/null` — surface them so missing toolchains (e.g. no Python build deps) fail loud rather than as a confusing `ModuleNotFoundError` on the next line.
 
 ## Process
 
@@ -36,6 +39,8 @@ source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_study_pdf.py "<p
 ```
 
 This prints the detected metadata (title, year, DOI, PMID/PMCID) and the list of sections found. Authors and journal are not auto-detected — fill those in by hand from the PDF's first page after extraction. Review with the user before extracting.
+
+If the dry run prints a `WARNING: detected N tokens that look like ... right-to-left order` line, one of the paper's tables (usually a correlation matrix) was extracted with reversed cells. Either rerun with `--layout` or plan to reconstruct that table from the published HTML — never ship the .md without fixing it.
 
 ### Step 2: Extract
 
@@ -49,7 +54,7 @@ If `-o` is omitted, output goes next to the PDF.
 
 After extraction, read the top of the file and verify:
 
-1. **Title, authors, journal, year, DOI/PMID** are correct. The script often munges multi-line cover matter into the title field (journal header + publication date + title all concatenated). Always check the first page of the PDF and rewrite the title, author list, and journal field cleanly. Check the DOI landing page if anything is unclear.
+1. **Title, authors, journal, year, DOI/PMID** are correct. The script auto-detects title, year, DOI, PMID, and PMCID — but skips authors and journal, which need manual fill-in from the first page. NIHMS author manuscripts (PMC preprints) bury the title under "HHS Public Access / Author manuscript / Pain Pract. ..." cover matter; the script filters those lines but always sanity-check the title against the PDF. If the PMID/PMCID is missing or unclear, look the paper up on PubMed/PMC by DOI and fill in by hand.
 2. **Add a "Key findings" bullet list** at the top (3-6 bullets: design, n, primary result, hazard ratios / effect sizes, main conclusion). This is the value of having the paper in the repo — future-you can scan it in 10 seconds.
 3. **Tables**: The script extracts text-layer tables as best it can, but two-column layouts frequently interleave table rows with adjacent body text. For studies where the main result is in a table (hazard ratios, confidence intervals, p-values), reconstruct tables as clean Markdown from the PDF.
 4. **Spot-check Methods and Results** for column-merge artifacts. Watch for two adjacent section headings joined on one line ("Introduction Case Presentation"), table rows wrapped into running text, and references interleaved with body sections.
@@ -133,6 +138,11 @@ The script scans for IMRaD-style headings at the start of lines. It recognizes c
 - **Results** / Findings
 - **Discussion**
 - **Conclusion** / Conclusions
+- **Acknowledgments** / Acknowledgements
+- **Funding** / Funding Information
+- **Conflicts of Interest** / Competing Interests
+- **Data Availability** (statement)
+- **What is Known** / **What This Study Adds** (sidebar boxes common in BMJ-style journals)
 - **References** / Bibliography / Literature Cited
 
 Headings can be in ALL CAPS, Title Case, or numbered (`1. Introduction`, `2. Methods`). The script normalizes them to `## Section Name`. Anything before the first detected section becomes the metadata block + abstract area; anything after References stays under References.
@@ -140,7 +150,9 @@ Headings can be in ALL CAPS, Title Case, or numbered (`1. Introduction`, `2. Met
 ## Troubleshooting
 
 - **Two-column bleed**: pdfplumber usually handles columns well, but some journals (older Cureus, some Elsevier, JCEM Case Reports) interleave. If Methods/Results look scrambled, rerun with `--layout` (uses pdfplumber's layout=True mode). For very short papers (≤6 pages), a full manual rewrite from the PDF is usually faster than patching bleed artifacts.
-- **Title pollution**: On journals that use a running header on page 1 ("JCEM Case Reports, 2024, 2, luae102 Advance access publication 10 July 2024..."), the script often concatenates the header with the actual title. Always rewrite the title cleanly — do not ship the extracted title field unedited.
+- **Reversed table cells (right-to-left)**: Some PDFs encode correlation matrices with reversed text direction, so cells like `0.28**` come out as `**82.0` and labels like `CSI` come out as `ISC`. The script detects this and prints a warning at extraction time. Fix by either retrying with `--layout` or pulling the table straight from the published HTML (PMC or the journal site) and pasting it in.
+- **NIHMS / PMC author manuscripts**: For papers retrieved from PMC under their NIHMS preprint number (`nihms-XXXXXX.pdf`), the PDF puts "HHS Public Access / Author manuscript" cover matter and a running journal cite ahead of the title. The script filters this chrome, but always cross-check the .md against the **PMC HTML** page (`pmc.ncbi.nlm.nih.gov/articles/PMC<id>/`) — it gives you a clean Table 2, intact references with PubMed links, and verified PMID. Make this a default step for any NIHMS-prefixed PDF.
+- **Title pollution**: On journals that use a running header on page 1 (e.g. "JCEM Case Reports, 2024, 2, luae102 Advance access publication 10 July 2024..."), older versions of the script concatenated the header with the actual title. The script now filters NIHMS and "Published in final edited form as" lines and stitches multi-line titles (including hyphenated breaks like `cross-` + `sectional`), but unfamiliar journal-specific cover matter can still leak through — sanity-check the title.
 - **Authors/journal not detected**: Multi-line author blocks with superscript affiliations frequently fail detection. Read the first page and fill in manually.
 - **Missing DOI**: Regex looks for `10.xxxx/...` patterns. If the paper uses an unusual DOI format, add it manually.
 - **No sections detected**: Short letters, editorials, and case reports sometimes lack IMRaD structure. The script falls back to a flat extraction — add headings manually or do a full rewrite.
