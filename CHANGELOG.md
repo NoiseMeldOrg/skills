@@ -7,6 +7,16 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.30
+
+Make extract-webpage portable across project contexts (skill-local venv + user-site install paths)
+
+- SKILL.md: rewrote Setup section to give two clearly labeled install paths instead of assuming a project-local .venv/ at the cwd. Path A is a skill-local venv at {SKILL_DIR}/.venv/ — portable across invocation directories; one-line setup that installs trafilatura + playwright + readability-lxml + markdownify and runs `playwright install chromium`. Path B is `pip3 install --user --break-system-packages …` for users who don't want a per-skill venv; notes PEP 668 and explains that `--break-system-packages` is safe in user-site context because it only writes to ~/Library/Python/3.x/site-packages, never to the system Python. Closing note documents the one-line substitution (`{SKILL_DIR}/.venv/bin/python` for `python3`) if Path A was chosen.
+- SKILL.md: replaced `source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_webpage.py` with `python3 {SKILL_DIR}/scripts/extract_webpage.py` in all three invocation examples (Step 1 dry-run, Step 2 single page, Step 2 --crawl). The skill is invoked from arbitrary working directories — often outside any Python project — and the old `source` line silently failed those callers with a "no such file" on .venv/bin/activate, with no signal that the SKILL.md's setup assumption was the problem.
+- SKILL.md: added a sentence to the Step 3 Post-Process Title check covering big-typography landing pages where each headline word lives in its own styled <span> (e.g. "The / Claude / Code / Course" stacked vertically). Trafilatura preserves the line breaks and the H1 lands fragmented across multiple lines — tells the agent to merge them into a single H1 in post.
+- No code changes — scripts/extract_webpage.py was always callable from python3 once the deps were installed; only the SKILL.md's `source .venv/bin/activate` assumption was wrong.
+- Verified: ran the full skill on ryanfrizelle.com from /Volumes/Dock SSD/Source/Repos/NoiseMeldOrg/rapture-mac (no .venv/ at cwd) using Path B; got 951 words of clean content extracted to ~/Documents/notes/webpages/ryan-frizelle-homepage.md, then fixed the fragmented "The / Claude / Code / Course" headline per the new post-process guidance.
+
 ## 1.0.29
 
 Add post-commit hook to fold CHANGELOG entries into their own commit

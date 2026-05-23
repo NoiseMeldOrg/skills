@@ -36,15 +36,38 @@ Do NOT use for:
 
 ## Setup
 
-The script requires `trafilatura`, plus `playwright` for the JS-rendering fallback and `readability-lxml`+`markdownify` for the structure-recovery fallback. Install everything in the project venv:
+The script requires `trafilatura`, plus `playwright` for the JS-rendering fallback and `readability-lxml`+`markdownify` for the structure-recovery fallback. Pick **one** of the two install paths below. The skill is invoked from arbitrary working directories (often outside any Python project), so do **not** assume a project-local `.venv/` exists at the cwd — that's the most common reason this skill silently fails.
+
+### Path A — skill-local venv (recommended, portable)
+
+Install everything into a dedicated venv that lives inside the skill folder itself. The skill is then independent of whatever directory the user is in when invoking it.
 
 ```bash
-source .venv/bin/activate && pip install trafilatura playwright readability-lxml markdownify && playwright install chromium
+python3 -m venv {SKILL_DIR}/.venv \
+  && {SKILL_DIR}/.venv/bin/pip install --quiet trafilatura playwright readability-lxml markdownify \
+  && {SKILL_DIR}/.venv/bin/playwright install chromium
 ```
+
+After that, every invocation calls `{SKILL_DIR}/.venv/bin/python {SKILL_DIR}/scripts/extract_webpage.py …` directly (no `source activate` needed — the venv's python knows its own context).
+
+### Path B — user-site install (quick start, no venv)
+
+For machines where adding a venv per skill feels heavy, install into the user's site-packages instead. On macOS with the system Python 3.12+, PEP 668 blocks a plain `pip install --user`; pass `--break-system-packages` (safe — it only writes to `~/Library/Python/3.x/lib/python/site-packages/`, never to the system Python).
+
+```bash
+pip3 install --user --break-system-packages trafilatura playwright readability-lxml markdownify \
+  && python3 -m playwright install chromium
+```
+
+Then every invocation calls `python3 {SKILL_DIR}/scripts/extract_webpage.py …` and finds the deps via user-site.
+
+### How the deps are used
 
 `trafilatura` handles static HTML on its own. `curl` is in the cascade for Cloudflare-fronted sites where the requests library is 403'd; it ships on every macOS/Linux box, no install needed. `playwright` is only invoked when both static fetchers return sparse content -- that is, on genuinely JS-only sites. `readability-lxml`/`markdownify` are invoked when trafilatura succeeds at words but loses all the page's headings (the SPA-with-generic-divs case). Install everything up front so the fallbacks are ready when needed. Chromium downloads to `~/.cache/ms-playwright` and is shared across all venvs on the machine, so it's a one-time cost.
 
 If the cascade reaches Playwright but it isn't installed, the script exits with the install command so the user can install it and re-run. The Readability fallback fails silently (the script just keeps trafilatura's output) if `readability-lxml` is missing.
+
+> **Throughout the rest of this document, command examples use `python3` (Path B).** If you used Path A, substitute `{SKILL_DIR}/.venv/bin/python` for `python3` in every command.
 
 ## Process
 
@@ -53,7 +76,7 @@ If the cascade reaches Playwright but it isn't installed, the script exits with 
 Always start with a dry run to check what the script can see:
 
 ```bash
-source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_webpage.py "<url>" --dry-run
+python3 {SKILL_DIR}/scripts/extract_webpage.py "<url>" --dry-run
 ```
 
 This shows the detected title, author, date, site name, description, and word count. For crawl mode, add `--crawl` to the dry run to see the list of discovered pages.
@@ -64,12 +87,12 @@ The dry run reports which fetcher in the cascade succeeded (`Fetcher: requests` 
 
 **Single page:**
 ```bash
-source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_webpage.py "<url>" -o "<output-path>.md"
+python3 {SKILL_DIR}/scripts/extract_webpage.py "<url>" -o "<output-path>.md"
 ```
 
 **Full site:**
 ```bash
-source .venv/bin/activate && python {SKILL_DIR}/scripts/extract_webpage.py "<url>" --crawl -o "<output-path>.md"
+python3 {SKILL_DIR}/scripts/extract_webpage.py "<url>" --crawl -o "<output-path>.md"
 ```
 
 The `--crawl` flag discovers pages on the same domain (via sitemap, then static link extraction, then -- if neither yielded any links -- a rendered fetch of the start page) and extracts each one, combining them into a single document with a table of contents. It respects a 1-second delay between requests by default (`--delay` to adjust). Use `--max-pages` to cap the number of pages (default: 50).
@@ -96,7 +119,7 @@ Other flags:
 
 After extraction, read the output and check:
 
-1. **Title**: Auto-detected titles sometimes grab the site name instead of the article title, or include " | Site Name" suffixes. Fix the `# Title` line.
+1. **Title**: Auto-detected titles sometimes grab the site name instead of the article title, or include " | Site Name" suffixes. Fix the `# Title` line. On big-typography landing pages where each word of the headline lives in its own styled `<span>` (e.g. "The / Claude / Code / Course" stacked vertically), trafilatura preserves the line breaks and the H1 lands fragmented across multiple lines — merge them into a single H1 in post.
 
 2. **Metadata block**: Verify the source URL, author, date, and site name. Fill in anything missing. The metadata block should contain:
    - **Author** (if identifiable)
