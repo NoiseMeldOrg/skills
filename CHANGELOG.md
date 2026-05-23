@@ -7,6 +7,15 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.31
+
+Document extract-transcript bundle JSON schema in SKILL.md
+
+- SKILL.md: added a typed JSON sketch of what scripts/get_transcript.py actually produces, immediately after the existing flat field list. The old list named the keys but not the shapes, so consumers had to read the producer script (or guess) to know whether chapters[i] exposed `start_time` or `start_seconds`, whether transcript_timestamped[i] exposed `t` or `start`, and so on. The new block shows the concrete schema — title/channel/channel_url as strings, description nullable, duration_seconds as int, upload_date as YYYY-MM-DD nullable string, chapters as a nullable list of {title, start_seconds} objects, transcript_plain as a string, transcript_timestamped as a list of {text, start, duration} objects with float seconds, and metadata_source as "yt-dlp" or "fallback".
+- SKILL.md: explicit gotcha block follows the schema, calling out the four fields easiest to assume wrong. Chapters use `start_seconds` (a float), not `start_time` / `start` / `timestamp`. There is no `end_time` — chapter-end must be computed from the next chapter's `start_seconds`, or from `duration_seconds` for the last chapter. Timestamped transcript entries use `start` + `duration` (not `t` / `length`); add them for the end of a segment. `chapters` is `null` (not `[]`) when the video has no chapter markers, so consumers must test with `bundle.get("chapters") or []` before iterating, or they'll trip a TypeError. `upload_date` is a normalized YYYY-MM-DD string when metadata_source == "yt-dlp" and may be null on the fallback path.
+- No code changes — scripts/get_transcript.py was already emitting these field names; SKILL.md prose just didn't tell consumers what they were. Surfaced when a view script (built off the SKILL's field list) assumed `start_time` and silently produced `0s -> 0s` chapter timestamps across five Ryan Frizelle bundles, only caught during markdown post-processing.
+- Verified: re-loaded /tmp/ryan-bundle-1.json (video vSWJipDxcHY, 8 chapters) and confirmed `chapters[0]` is exactly `{"title": "Marrow Dashboard Tour", "start_seconds": 0.0}` — matches the schema block as written.
+
 ## 1.0.30
 
 Make extract-webpage portable across project contexts (skill-local venv + user-site install paths)

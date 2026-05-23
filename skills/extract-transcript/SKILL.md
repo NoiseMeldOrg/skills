@@ -46,6 +46,33 @@ python3 {SKILL_DIR}/scripts/get_transcript.py "<youtube-url>" -o /tmp/bundle.jso
 
 The JSON bundle contains: `title`, `channel`, `channel_url`, `description`, `duration_seconds`, `upload_date`, `chapters`, `transcript_plain`, `transcript_timestamped`, `metadata_source`.
 
+**Bundle schema (exact field names — important):**
+
+```jsonc
+{
+  "title":             "string",
+  "channel":           "string",
+  "channel_url":       "string",
+  "description":       "string | null",
+  "duration_seconds":  123,                   // int
+  "upload_date":       "YYYY-MM-DD | null",
+  "chapters": [                               // null when the video has no chapters
+    { "title": "string", "start_seconds": 0.0 }
+  ],
+  "transcript_plain":       "string",         // newline-joined plain text
+  "transcript_timestamped": [
+    { "text": "string", "start": 0.0, "duration": 0.0 }   // seconds, float, 2dp
+  ],
+  "metadata_source": "yt-dlp | fallback"
+}
+```
+
+Pay attention to these specifically — they're the ones easiest to assume wrong:
+- Chapters use `start_seconds` (a float), **not** `start_time` / `start` / `timestamp`. There is no `end_time`; compute the end of chapter *i* as the `start_seconds` of chapter *i+1* (or `duration_seconds` for the last chapter).
+- Timestamped transcript entries use `start` and `duration` (not `t` / `length`). Add `start + duration` for the end of a segment.
+- `upload_date` is a normalized `YYYY-MM-DD` string when `metadata_source == "yt-dlp"`; may be `null` on the fallback path.
+- `chapters` is `null` (not `[]`) when the video has no chapter markers. Test with `bundle.get("chapters") or []` before iterating.
+
 **Requires `youtube-transcript-api`.** If the script fails with `ModuleNotFoundError`, install it: `pip install youtube-transcript-api`.
 
 **Prefer `yt-dlp` when available** — it gives richer and more reliable metadata (especially chapters and full descriptions). Install with `pip install yt-dlp` or `brew install yt-dlp`. The fallback path (oembed + YouTube watch-page scrape) works without it but is brittle; any field it can't resolve is `null`.
