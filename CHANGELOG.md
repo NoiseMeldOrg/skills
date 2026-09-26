@@ -7,6 +7,16 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.32
+
+extract-book: drop duplicate TOC chapters, skip venv when pdfplumber exists; humanization: zero em dashes
+
+- - extract_book_pdf.py drops out-of-order duplicate chapter numbers from
+- TOC pages that start with a chapter line.
+- - SKILL.md: check system pdfplumber before making a venv, read the cover
+- page for metadata, how to find ISBNs for KDP books.
+- - clear-and-concise-humanization: zero em dashes in anything outgoing.
+
 ## 1.0.31
 
 Document extract-transcript bundle JSON schema in SKILL.md

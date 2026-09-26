@@ -21,7 +21,13 @@ Convert PDF books into well-structured Markdown files with proper chapter headin
 
 ## Setup (one-time per project)
 
-The script requires Python 3.10+ and the `pdfplumber` library. Set up a virtual environment if one doesn't already exist:
+The script requires Python 3.10+ and the `pdfplumber` library. First check whether the system Python already has it — if so, skip the venv entirely and call `python3` directly:
+
+```bash
+python3 -c "import pdfplumber" 2>/dev/null && echo "system ok — no venv needed"
+```
+
+Only if that fails, set up a virtual environment:
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate && pip install pdfplumber
@@ -54,7 +60,7 @@ This prints:
 Show the dry-run output and check:
 - **Are all chapters detected?** Compare the detected list with the actual book structure.
 - **Is the title correct?** Auto-detection sometimes grabs the wrong line (disclaimers, TOC headers). You'll fix this manually if needed.
-- **Are there duplicates?** Endnotes sections sometimes repeat "Chapter N" — the script filters these, but verify.
+- **Are there duplicates?** Endnotes sections sometimes repeat "Chapter N" — the script filters these, but verify. The script also drops out-of-order duplicate chapter numbers caused by TOC pages that start with a chapter line (e.g. a TOC tail beginning "Chapter 14: ..."). If a stray 1-page chapter still appears before the Introduction, delete that section during post-processing.
 - **For workbook/guidebook formats**: The script falls back to section-header detection. Verify the sections make sense.
 
 ### Step 3: Extract
@@ -76,7 +82,11 @@ If the user doesn't need image processing, omit `--render-images` for a text-onl
 
 ### Step 4: Vision Pass
 
-After extraction, search the output for `<!-- IMAGE:` placeholders. For each one:
+After extraction, search the output for `<!-- IMAGE:` placeholders.
+
+**Cover page note:** a rendered page that falls *before* the first detected section (usually the cover, `page_0001.png` in the images folder) gets no placeholder in the Markdown. Read it anyway — the cover is the best source for confirming the exact title, subtitle, and author for the metadata block.
+
+For each placeholder:
 
 1. **Read the image** using the Read tool (Claude Code can read PNG files natively)
 2. **Determine what the page contains:**
@@ -100,7 +110,7 @@ After the vision pass, read the first 20-30 lines of the output and fix:
    - **Copyright** (year)
    - **ISBN** (ISBN-13 preferred)
    
-   If the script missed any of these, add them by hand. A book extraction without at least author, copyright year, and ISBN is incomplete.
+   If the script missed any of these, add them by hand. A web search for the exact title + author usually surfaces the ISBN. Self-published Amazon KDP books have ISBN-13s starting with 979-8 and no publisher imprint — use "Independently published (Amazon KDP)". A book extraction without at least author, copyright year, and ISBN is incomplete.
 3. **Spot-check a chapter transition**: Read around a `## Chapter` heading to verify content flows correctly and there's no bleed from the previous chapter.
 4. **Verify no placeholders remain**: Search for `<!-- IMAGE:` to confirm all were processed.
 

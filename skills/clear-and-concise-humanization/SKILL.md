@@ -153,7 +153,7 @@ Keep hedges that reflect real uncertainty. "Probably" and "I think" are honest. 
 The most visible AI tell in longer prose is em dashes used as all-purpose connectors. LLMs love them.
 
 Do this:
-- **Kill em dashes aggressively.** Replace with periods, commas, colons, parentheses, or by rewriting the sentence. One em dash in a 1,000-word document is fine. Ten is a tell.
+- **Kill em dashes: zero in anything outgoing.** Michael's hard rule (2026-07-24): no em dashes at all in any document another person will read: emails, reports, proposals, invoices, everything. Replace with periods, commas, colons, parentheses, or by rewriting the sentence. Before finalizing, search the draft for "—" and clear every hit. (Internal-only notes may keep the occasional dash, but default to zero everywhere.)
 - Similarly reduce en dashes in ranges when words work: "10-12 weeks" becomes "10 to 12 weeks."
 - Vary connectives. Instead of "X, which Y, which Z," break into separate sentences. **(Strunk Rule 16: keep related words together, but don't stack relative clauses.)**
 - Avoid "Moreover," "Furthermore," "In addition," "Additionally" at sentence starts. They signal a machine outlining, not a person thinking.

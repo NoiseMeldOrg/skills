@@ -194,7 +194,53 @@ def detect_chapters_by_text_markers(pages: list[dict]) -> list[dict]:
             })
         i += 1
 
+    chapters = drop_duplicate_chapter_numbers(chapters, pages)
     return chapters
+
+
+def drop_duplicate_chapter_numbers(chapters: list[dict], pages: list[dict]) -> list[dict]:
+    """
+    TOC pages that escape the TOC-skip heuristic can start with a chapter
+    line (e.g. the TOC tail beginning 'Chapter 14: ...'), producing a stray
+    1-page chapter that duplicates a real one. When the same chapter number
+    is detected more than once, keep the occurrence whose page position is
+    consistent with the ascending order of the uniquely-numbered chapters;
+    ties go to the occurrence on the fuller page.
+    """
+    nums = []
+    for ch in chapters:
+        m = re.match(r'Chapter (\d+)', ch["title"])
+        nums.append(int(m.group(1)) if m else None)
+
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for idx, n in enumerate(nums):
+        if n is not None:
+            groups[n].append(idx)
+
+    drop = set()
+    for n, idxs in groups.items():
+        if len(idxs) < 2:
+            continue
+        unique_others = [
+            j for j, m in enumerate(nums)
+            if m is not None and m != n and len(groups[m]) == 1
+        ]
+
+        def fits_order(i):
+            return all(
+                (nums[j] < n) == (chapters[j]["start_page"] < chapters[i]["start_page"])
+                for j in unique_others
+            )
+
+        candidates = [i for i in idxs if fits_order(i)] or list(idxs)
+        keep = max(
+            candidates,
+            key=lambda i: pages[chapters[i]["marker_page"]]["chars"],
+        )
+        drop.update(i for i in idxs if i != keep)
+
+    return [ch for i, ch in enumerate(chapters) if i not in drop]
 
 
 def detect_chapters_by_single_number(pages: list[dict]) -> list[dict]:
