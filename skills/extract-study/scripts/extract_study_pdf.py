@@ -124,10 +124,14 @@ def extract_metadata(pages: list[str]) -> dict:
         "pmcid": None,
     }
 
-    # DOI
-    m = DOI_RE.search(head)
-    if m:
-        meta["doi"] = m.group(0).rstrip(".,;)")
+    # DOI. Two-column layouts sometimes cut a DOI short where it wraps at a
+    # column boundary (e.g. "10.1371/journal." with the rest of the line
+    # bleeding in from the neighboring column) while the same DOI appears
+    # complete elsewhere on the page (running footer, citation block). Take
+    # the longest match rather than just the first.
+    doi_matches = [dm.group(0).rstrip(".,;)") for dm in DOI_RE.finditer(head)]
+    if doi_matches:
+        meta["doi"] = max(doi_matches, key=len)
 
     # PMID / PMCID
     m = PMID_RE.search(head)
@@ -144,10 +148,24 @@ def extract_metadata(pages: list[str]) -> dict:
 
     # Title: longest non-trivial line in the first ~25 lines of page 1
     # that isn't a journal header, DOI, NIHMS cover matter, or copyright.
+    # Some journals set the article-type label ("Research Article", "Case
+    # Report", ...) directly in front of the title with no line break, and
+    # pdfplumber sometimes drops the space between the two words entirely
+    # (e.g. "RESEARCHARTICLESeroprevalence of..."). Strip that label prefix
+    # instead of discarding the whole line, or the real title goes with it.
+    label_prefix_re = re.compile(
+        r'^(research\s*article|review\s*article|original\s*article|'
+        r'case\s*report|short\s*communication|brief\s*report|'
+        r'original\s*research)\s*[:.\-]?\s*',
+        re.IGNORECASE,
+    )
     if pages:
         first_lines = [l.strip() for l in pages[0].split("\n")[:25] if l.strip()]
         candidates = []
         for line in first_lines:
+            line = label_prefix_re.sub('', line).strip()
+            if not line:
+                continue
             lower = line.lower()
             if len(line) < 15 or len(line) > 250:
                 continue
@@ -171,8 +189,20 @@ def extract_metadata(pages: list[str]) -> dict:
             for nxt in candidates[1:6]:
                 if not nxt:
                     break
-                # Stop at author lines.
-                if re.search(r",\s*(PhD|MD|MS|MSc|MPH|RN|DO|DDS|DVM|PharmD|MBBS)\b", nxt):
+                # Stop at author lines: a degree token after a comma (accepting
+                # both "PhD" and the dotted "Ph.D." form journals commonly use),
+                # or 2+ letter-immediately-followed-by-digit tokens, which is
+                # how superscript affiliation markers show up once pdfplumber
+                # flattens them into the text layer (e.g. "GetahunID 1",
+                # "Mamo2") — real title text essentially never does this.
+                if re.search(
+                    r",\s*(Ph\.?\s?D\.?|M\.?\s?D\.?|M\.?\s?S\.?|MSc|M\.?\s?P\.?\s?H\.?|"
+                    r"R\.?\s?N\.?|D\.?\s?O\.?|D\.?\s?D\.?\s?S\.?|D\.?\s?V\.?\s?M\.?|"
+                    r"Pharm\.?\s?D\.?|MBBS)\b",
+                    nxt,
+                ):
+                    break
+                if len(re.findall(r'[a-zA-Z]\d', nxt)) >= 2:
                     break
                 # Continuation if it starts lowercase, ends with hyphen, or is
                 # short enough to plausibly be a title fragment.

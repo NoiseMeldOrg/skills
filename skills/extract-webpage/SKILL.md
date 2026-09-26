@@ -119,15 +119,17 @@ Other flags:
 
 After extraction, read the output and check:
 
-1. **Title**: Auto-detected titles sometimes grab the site name instead of the article title, or include " | Site Name" suffixes. Fix the `# Title` line. On big-typography landing pages where each word of the headline lives in its own styled `<span>` (e.g. "The / Claude / Code / Course" stacked vertically), trafilatura preserves the line breaks and the H1 lands fragmented across multiple lines — merge them into a single H1 in post.
+1. **Title**: Auto-detected titles sometimes grab the site name instead of the article title, or include " | Site Name" suffixes. Fix the `# Title` line. On big-typography landing pages where each word of the headline lives in its own styled `<span>` (e.g. "The / Claude / Code / Course" stacked vertically), trafilatura preserves the line breaks and the H1 lands fragmented across multiple lines. Merge them into a single H1 in post. Also check for a duplicate: trafilatura often keeps the article's own on-page heading as the first line of `content`, so the same title appears twice, once as the metadata `# H1` and again as a `##` right below it. Remove the second one when it just repeats the title.
 
 2. **Metadata block**: Verify the source URL, author, date, and site name. Fill in anything missing. The metadata block should contain:
    - **Author** (if identifiable)
    - **Site** (domain or publication name)
    - **Date** (publication date if detectable)
    - **Source** (the original URL -- this is mandatory)
-   - **Scraped** (today's date)
+   - **Scraped** (today's date -- the script fills this in automatically)
    - **Description** (if the page has a meta description)
+
+   The script's `Date` is a best guess, not a verified fact. On pages with no real publish date (reference docs, evergreen landing pages), it can fall back to today's date and look exactly like the `Scraped` line. If `Date` equals `Scraped` and the page itself has no visible publish date, drop the `Date` line rather than reporting a fabricated one.
 
 3. **Content quality**: Trafilatura strips boilerplate well for most sites, but occasionally keeps cookie banners, newsletter signup text, or related-article links. Remove these. Conversely, it sometimes strips content that looks like boilerplate but isn't (sidebars with relevant data, footnotes). Check whether anything important is missing by visiting the URL.
 

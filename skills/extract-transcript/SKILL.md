@@ -44,7 +44,7 @@ If the user provides a YouTube URL instead of pasted text, run:
 python3 {SKILL_DIR}/scripts/get_transcript.py "<youtube-url>" -o /tmp/bundle.json
 ```
 
-The JSON bundle contains: `title`, `channel`, `channel_url`, `description`, `duration_seconds`, `upload_date`, `chapters`, `transcript_plain`, `transcript_timestamped`, `metadata_source`.
+The JSON bundle contains: `title`, `channel`, `channel_url`, `description`, `duration_seconds`, `upload_date`, `chapters`, `transcript_language`, `transcript_plain`, `transcript_timestamped`, `metadata_source`.
 
 **Bundle schema (exact field names — important):**
 
@@ -59,6 +59,7 @@ The JSON bundle contains: `title`, `channel`, `channel_url`, `description`, `dur
   "chapters": [                               // null when the video has no chapters
     { "title": "string", "start_seconds": 0.0 }
   ],
+  "transcript_language":    "string",         // ISO language code of the transcript actually fetched
   "transcript_plain":       "string",         // newline-joined plain text
   "transcript_timestamped": [
     { "text": "string", "start": 0.0, "duration": 0.0 }   // seconds, float, 2dp
@@ -72,6 +73,7 @@ Pay attention to these specifically — they're the ones easiest to assume wrong
 - Timestamped transcript entries use `start` and `duration` (not `t` / `length`). Add `start + duration` for the end of a segment.
 - `upload_date` is a normalized `YYYY-MM-DD` string when `metadata_source == "yt-dlp"`; may be `null` on the fallback path.
 - `chapters` is `null` (not `[]`) when the video has no chapter markers. Test with `bundle.get("chapters") or []` before iterating.
+- The script prefers an English transcript but falls back to whatever language YouTube has (often an auto-generated caption in the uploader's own language) when no English track exists. Check `transcript_language`: if it's not `en`, say so plainly in the doc's metadata and treat the transcript as machine-translated in your head, not verbatim speech, since auto-captions in other languages are noisier.
 
 **Requires `youtube-transcript-api`.** If the script fails with `ModuleNotFoundError`, install it: `pip install youtube-transcript-api`.
 

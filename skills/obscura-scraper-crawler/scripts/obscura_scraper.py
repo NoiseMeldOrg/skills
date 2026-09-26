@@ -25,6 +25,7 @@ import socket
 import subprocess
 import sys
 import time
+from datetime import date
 from urllib.parse import urlparse
 
 import trafilatura
@@ -98,8 +99,9 @@ def _obscura_install_hint(binary_arg: str = "obscura") -> str:
     """Return a platform-specific install hint pointing at obscura's releases."""
     system = platform.system()
     machine = platform.machine().lower()
+    location = "on PATH" if "/" not in binary_arg and "\\" not in binary_arg else "at that path"
     lines = [
-        f"ERROR: '{binary_arg}' binary not found on PATH.",
+        f"ERROR: '{binary_arg}' binary not found {location}.",
         "",
         "obscura-scraper-crawler requires the obscura headless browser binary.",
         f"Prebuilt releases: {OBSCURA_RELEASES_URL}",
@@ -233,6 +235,7 @@ class ObscuraSession:
         self._proc = None
         self._pw = None
         self._browser = None
+        self._context = None
 
     def __enter__(self):
         argv = [self.binary, "serve", "--port", str(self.port)]
@@ -305,13 +308,21 @@ class ObscuraSession:
         if wait_until == "networkidle0":
             wait_until = "networkidle"
 
-        ctx_kwargs = {}
-        if user_agent:
-            ctx_kwargs["user_agent"] = user_agent
+        # Reuse one browser context for the whole session instead of a fresh
+        # context per page. A new context is a fresh cookie jar (like a new
+        # incognito window), which silently defeated the cookie persistence
+        # this class's whole design is for -- CDN routing cookies and A/B
+        # cohort assignments never carried over between crawled pages. The
+        # context is created lazily on the first fetch (honoring that call's
+        # user_agent, if any) and reused after that.
+        if self._context is None:
+            ctx_kwargs = {}
+            if user_agent:
+                ctx_kwargs["user_agent"] = user_agent
+            self._context = self._browser.new_context(**ctx_kwargs)
 
-        ctx = self._browser.new_context(**ctx_kwargs)
         try:
-            page = ctx.new_page()
+            page = self._context.new_page()
             try:
                 page.goto(url, wait_until=wait_until,
                           timeout=timeout_seconds * 1000)
@@ -329,13 +340,17 @@ class ObscuraSession:
         except Exception as exc:
             print(f"  (fetch failed for {url}: {exc})", file=sys.stderr)
             return None
-        finally:
-            ctx.close()
 
     def __exit__(self, *args):
         self._cleanup()
 
     def _cleanup(self):
+        if self._context is not None:
+            try:
+                self._context.close()
+            except Exception:
+                pass
+            self._context = None
         if self._browser is not None:
             try:
                 self._browser.close()
@@ -359,10 +374,11 @@ class ObscuraSession:
             self._proc = None
 
 
-def _extract_from_html(html, config, include_links, include_images, include_tables):
+def _extract_from_html(html, config, include_links, include_images, include_tables, url=None):
     metadata = trafilatura.extract_metadata(html)
     content = trafilatura.extract(
         html,
+        url=url,
         output_format="markdown",
         include_links=include_links,
         include_images=include_images,
@@ -373,7 +389,7 @@ def _extract_from_html(html, config, include_links, include_images, include_tabl
     return content, metadata
 
 
-def _readability_extract(html, include_links=True):
+def _readability_extract(html, include_links=True, url=None):
     """Fallback extractor using Mozilla's Readability (via readability-lxml).
 
     Trafilatura is conservative: it discards anything that doesn't structurally
@@ -399,6 +415,19 @@ def _readability_extract(html, include_links=True):
     if not content_html:
         return None
 
+    # Readability keeps whatever href/src the page used, which is often
+    # root-relative or path-relative. Resolve to absolute so the saved
+    # Markdown (especially a multi-page crawl combining several original
+    # pages into one document) stays navigable on its own.
+    if url:
+        try:
+            from lxml import html as lxml_html
+            fragment = lxml_html.fromstring(content_html)
+            fragment.make_links_absolute(url)
+            content_html = lxml_html.tostring(fragment, encoding="unicode")
+        except Exception:
+            pass
+
     strip_tags = ["div", "span"]
     if not include_links:
         strip_tags.append("a")
@@ -407,7 +436,7 @@ def _readability_extract(html, include_links=True):
 
 
 def _extract_with_readability_fallback(html, config, include_links,
-                                       include_images, include_tables):
+                                       include_images, include_tables, url=None):
     """Run trafilatura on HTML and apply the Readability fallback when needed.
 
     Returns (content, metadata). Two failure modes Readability rescues:
@@ -421,7 +450,7 @@ def _extract_with_readability_fallback(html, config, include_links,
     """
     extract_kwargs = dict(
         config=config, include_links=include_links,
-        include_images=include_images, include_tables=include_tables,
+        include_images=include_images, include_tables=include_tables, url=url,
     )
     content, metadata = _extract_from_html(html, **extract_kwargs)
 
@@ -429,13 +458,13 @@ def _extract_with_readability_fallback(html, config, include_links,
     readability_md = None
 
     if not content or len(content.split()) < RENDER_FALLBACK_THRESHOLD:
-        readability_md = _readability_extract(html, include_links=include_links)
+        readability_md = _readability_extract(html, include_links=include_links, url=url)
         if readability_md and len(readability_md.split()) >= RENDER_FALLBACK_THRESHOLD:
             use_readability = True
     else:
         traf_headings = len(re.findall(r'^#{1,6} ', content, re.MULTILINE))
         if traf_headings == 0:
-            readability_md = _readability_extract(html, include_links=include_links)
+            readability_md = _readability_extract(html, include_links=include_links, url=url)
             if readability_md:
                 read_headings = len(re.findall(r'^#{1,6} ', readability_md, re.MULTILINE))
                 read_words = len(readability_md.split())
@@ -724,6 +753,7 @@ def build_single_page_markdown(url, content, metadata):
         if metadata.date:
             lines.append(f"**Date:** {metadata.date}")
     lines.append(f"**Source:** {url}")
+    lines.append(f"**Scraped:** {date.today().isoformat()}")
     if metadata and metadata.description:
         lines.append(f"**Description:** {metadata.description}")
 
@@ -757,6 +787,7 @@ def build_multi_page_markdown(start_url, pages, site_metadata):
     lines.append(f"**Source:** {start_url}")
     if site_metadata and site_metadata.author:
         lines.append(f"**Author:** {site_metadata.author}")
+    lines.append(f"**Scraped:** {date.today().isoformat()}")
     if site_metadata and site_metadata.description:
         lines.append(f"**Description:** {site_metadata.description}")
     lines.append("")
@@ -896,7 +927,7 @@ def _run(session, args, config, include_links, fetch_kwargs):
             return None, None
         return _extract_with_readability_fallback(
             html, config, include_links,
-            args.include_images, include_tables=True,
+            args.include_images, include_tables=True, url=url,
         )
 
     if args.crawl:

@@ -7,6 +7,25 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.33
+
+Test pass on every skill: transcript, webpage, obscura, book, study, humanization, panel
+
+- - extract-transcript: fall back to any caption language when English is
+- missing (crashed before); new transcript_language field.
+- - extract-webpage: resolve relative links, emit the Scraped field,
+- honor --max-pages in crawl dry runs, notes on dates and split titles.
+- - obscura-scraper-crawler: reuse one browser context so cookies persist,
+- same link and Scraped fixes, clear venv setup, better missing-binary error.
+- - extract-book: long TOCs no longer hide chapters, better title, author
+- and publisher detection, strip duplicate subtitle lines, pypdfium2 note.
+- - extract-study: title stops at Ph.D. and affiliation digits, strips a
+- glued RESEARCH ARTICLE label, picks the full DOI, Step 0 for links
+- (PMC PDFs are bot-gated), notes on run-together text.
+- - clear-and-concise-humanization: zero en dashes too; never invent a
+- specific detail to add "soul".
+- - accountability-panel: no invented facts, not just invented history.
+
 ## 1.0.32
 
 extract-book: drop duplicate TOC chapters, skip venv when pdfplumber exists; humanization: zero em dashes

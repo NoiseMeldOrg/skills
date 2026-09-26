@@ -38,6 +38,8 @@ If `.venv` already exists, just activate and ensure pdfplumber is installed:
 source .venv/bin/activate && pip install pdfplumber 2>/dev/null
 ```
 
+`--render-images` additionally needs `pypdfium2` (only imported when that flag is used). If a dry run and text-only extraction work but `--render-images` fails with `ModuleNotFoundError: pypdfium2`, install it the same way: `pip install pypdfium2`.
+
 Add `.venv/` to `.gitignore` if it's not already there.
 
 ## Process

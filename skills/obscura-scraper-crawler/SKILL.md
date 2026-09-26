@@ -35,13 +35,28 @@ Do NOT use for:
 
 ## Setup
 
-The script needs both Python packages and the obscura binary.
+The script needs both Python packages and the obscura binary. This skill is invoked from arbitrary working directories, so do not assume a project-local `.venv/` exists at the cwd -- install into a location the skill can always find. Pick **one** of the two paths below (same choice as the sister `extract-webpage` skill).
+
+### Path A -- skill-local venv (recommended, portable)
 
 ```bash
-source .venv/bin/activate && pip install trafilatura readability-lxml markdownify lxml playwright
+python3 -m venv {SKILL_DIR}/.venv \
+  && {SKILL_DIR}/.venv/bin/pip install --quiet trafilatura readability-lxml markdownify lxml playwright
 ```
 
-`playwright` connects to obscura over CDP, so you do NOT need to run `playwright install` -- there's no Chromium download. The Python wrapper uses a small Node.js driver that ships with the pip package; that's enough to talk WebSocket to obscura.
+Every invocation then calls `{SKILL_DIR}/.venv/bin/python {SKILL_DIR}/scripts/obscura_scraper.py …` directly, no activation needed.
+
+### Path B -- user-site install (quick start, no venv)
+
+```bash
+pip3 install --user --break-system-packages trafilatura readability-lxml markdownify lxml playwright
+```
+
+Every invocation then calls `python3 {SKILL_DIR}/scripts/obscura_scraper.py …`.
+
+> **Throughout the rest of this document, command examples use `python3` (Path B).** If you used Path A, substitute `{SKILL_DIR}/.venv/bin/python` for `python3` in every command.
+
+Either way, `playwright` connects to obscura over CDP, so you do NOT need to run `playwright install` -- there's no Chromium download. The Python wrapper uses a small Node.js driver that ships with the pip package; that's enough to talk WebSocket to obscura.
 
 Then download the obscura binary from https://github.com/h4ckf0r0day/obscura/releases and put it on PATH:
 
@@ -76,7 +91,7 @@ If the binary isn't on PATH when the script runs, it exits at second 0 with the 
 Always start with a dry run to confirm obscura can fetch the page and that stealth flags are set as expected:
 
 ```bash
-source .venv/bin/activate && python {SKILL_DIR}/scripts/obscura_scraper.py "<url>" --dry-run
+python3 {SKILL_DIR}/scripts/obscura_scraper.py "<url>" --dry-run
 ```
 
 Reports detected title, author, date, site name, description, word count, and the stealth/wait-until state. For crawl mode, add `--crawl` to also list the discovered pages.
@@ -87,12 +102,12 @@ If the dry run reports under 50 words, the real run will try the Readability fal
 
 **Single page:**
 ```bash
-source .venv/bin/activate && python {SKILL_DIR}/scripts/obscura_scraper.py "<url>" -o "<output-path>.md"
+python3 {SKILL_DIR}/scripts/obscura_scraper.py "<url>" -o "<output-path>.md"
 ```
 
 **Full site:**
 ```bash
-source .venv/bin/activate && python {SKILL_DIR}/scripts/obscura_scraper.py "<url>" --crawl -o "<output-path>.md"
+python3 {SKILL_DIR}/scripts/obscura_scraper.py "<url>" --crawl -o "<output-path>.md"
 ```
 
 The `--crawl` flag discovers pages on the same domain (sitemap via curl first, then -- if no sitemap -- a rendered fetch of the start page and DOM link harvest) and extracts each one through obscura, combining them into a single document with a table of contents. 1-second delay between requests by default (`--delay` to adjust). `--max-pages` caps the crawl (default: 50).

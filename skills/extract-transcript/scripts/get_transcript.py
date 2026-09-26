@@ -26,7 +26,7 @@ import sys
 import urllib.request
 from typing import Any
 
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api import NoTranscriptFound, YouTubeTranscriptApi
 
 
 def extract_video_id(url_or_id: str) -> str:
@@ -41,9 +41,20 @@ def extract_video_id(url_or_id: str) -> str:
     return url_or_id
 
 
-def fetch_transcript(video_id: str) -> tuple[str, list[dict[str, Any]]]:
+def fetch_transcript(video_id: str) -> tuple[str, list[dict[str, Any]], str]:
+    """Fetch the transcript, preferring English but falling back to whatever
+    language is available (many videos only have an auto-generated transcript
+    in the uploader's own language). Returns (plain, timed, language_code)."""
     api = YouTubeTranscriptApi()
-    transcript = api.fetch(video_id)
+    try:
+        transcript = api.fetch(video_id)
+    except NoTranscriptFound:
+        transcript_list = api.list(video_id)
+        try:
+            first_available = next(iter(transcript_list))
+        except StopIteration:
+            raise
+        transcript = first_available.fetch()
     plain = "\n".join(s.text for s in transcript)
     timed = [
         {
@@ -53,7 +64,7 @@ def fetch_transcript(video_id: str) -> tuple[str, list[dict[str, Any]]]:
         }
         for s in transcript
     ]
-    return plain, timed
+    return plain, timed, transcript.language_code
 
 
 def fetch_metadata_ytdlp(url: str) -> dict[str, Any] | None:
@@ -245,7 +256,7 @@ def main() -> None:
     video_id = extract_video_id(args.url)
     url = f"https://www.youtube.com/watch?v={video_id}"
 
-    plain, timed = fetch_transcript(video_id)
+    plain, timed, transcript_language = fetch_transcript(video_id)
 
     if args.plain:
         payload = plain
@@ -255,6 +266,7 @@ def main() -> None:
             "video_id": video_id,
             "url": url,
             **meta,
+            "transcript_language": transcript_language,
             "transcript_plain": plain,
             "transcript_timestamped": timed,
         }

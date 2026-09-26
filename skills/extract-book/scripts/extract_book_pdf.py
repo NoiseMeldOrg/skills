@@ -139,13 +139,25 @@ def detect_chapters_by_text_markers(pages: list[dict]) -> list[dict]:
         lower = p["stripped"].lower()
         if "contents" in lower and p["chars"] < 2000:
             toc_pages.add(p["idx"])
-            # Also mark the next few pages as potential TOC continuation
-            for offset in range(1, 4):
-                if p["idx"] + offset < len(pages):
-                    next_p = pages[p["idx"] + offset]
-                    # TOC continuation pages tend to be short with many entries
-                    if next_p["chars"] < 1500 and next_p["stripped"].count("\n") > 5:
-                        toc_pages.add(next_p["idx"])
+            # Also mark subsequent TOC continuation pages. A fixed 3-page
+            # lookahead misses long multi-page TOCs (10+ pages are common),
+            # letting the trailing entries escape and get picked up below as
+            # bogus one-off "chapters" with unique numbers the dedup pass
+            # can't catch. Instead, keep extending while a page still looks
+            # like a dense TOC listing: short, and densely referencing
+            # "Chapter N" / "Part N" (real chapter/section body pages rarely
+            # mention more than one of these).
+            offset = 1
+            while p["idx"] + offset < len(pages) and offset <= 15:
+                next_p = pages[p["idx"] + offset]
+                entry_hits = len(re.findall(
+                    r'\b(?:Chapter|Part)\s+[\dIVXLC]+\b', next_p["stripped"]
+                ))
+                if next_p["chars"] < 2000 and entry_hits >= 2:
+                    toc_pages.add(next_p["idx"])
+                    offset += 1
+                else:
+                    break
 
     chapters = []
     i = 0
@@ -530,13 +542,23 @@ def extract_metadata(pages: list[dict]) -> dict:
         for line in combined.split("\n"):
             s = line.strip()
             if re.search(r'\b(?:Publishing|Publishers|Press|Books)\b', s, re.IGNORECASE):
-                if len(s) < 80 and not re.search(r'(?:may be purchased|available)', s, re.IGNORECASE):
+                # Skip Bible-permission boilerplate ("Scripture quotations ...
+                # used by permission of <Bible publisher>"), which mentions a
+                # publisher-like word but isn't the book's own publisher.
+                if (len(s) < 80 and not re.search(
+                        r'(?:may be purchased|available|used by permission|public domain|scripture)',
+                        s, re.IGNORECASE)):
                     meta["publisher"] = s
                     break
 
-    # Author — look for "by <Name>" near the title (single line only)
-    author_match = re.search(r'\bby\s+([A-Z][a-zA-Z.\- ,]+(?:MD|PhD|DO|DC|RD|MS|MPH|Jr|Sr)?\.?)\s*$',
-                             combined[:2000], re.MULTILINE)
+    # Author — look for "by <Name>" near the title (single line only).
+    # Negative lookbehind excludes "Published by <Publisher>" / "Distributed
+    # by <Publisher>" lines, which match the same "by <Name>" shape but name
+    # the publisher, not the author.
+    author_match = re.search(
+        r'(?<!published )(?<!Published )(?<!distributed )(?<!Distributed )'
+        r'\bby\s+([A-Z][a-zA-Z.\- ,]+(?:MD|PhD|DO|DC|RD|MS|MPH|Jr|Sr)?\.?)\s*$',
+        combined[:2000], re.MULTILINE)
     if author_match:
         candidate = author_match.group(1).strip().rstrip(',.')
         # Reject if it looks like a sentence fragment rather than a name:
@@ -554,8 +576,15 @@ def extract_metadata(pages: list[dict]) -> dict:
         "oceanofpdf", "the advice herein", "disclaimer", "all rights reserved",
         "thank you for downloading", "copyright", "isbn", "contents",
         "table of contents", "balance books", "for gregory", "dedication",
-        "1 peter", "may be purchased",
+        "1 peter", "may be purchased", "praise for", "also by",
     ]
+    # Blurb/endorsement pages ("Praise for ...") are extremely common front
+    # matter and often lack the word "praise" on the page that got OCR'd
+    # (e.g. the "Praise for X" header sits on an earlier image-only page, or
+    # the blurb quote just continues from a previous page). These pages are
+    # recognizable instead by the quote-attribution pattern ("... —Name,
+    # credentials" or "... —NAME, credentials") on its own line.
+    blurb_attribution_re = re.compile(r'\n\s*[-‐–—]\s*[A-Z]')
     for page in pages[:10]:
         text = page["stripped"]
         if not text or page["chars"] < 5:
@@ -563,6 +592,8 @@ def extract_metadata(pages: list[dict]) -> dict:
         first_line = text.split("\n")[0].strip()
         lower = first_line.lower()
         if any(kw in lower for kw in skip_keywords):
+            continue
+        if blurb_attribution_re.search(text):
             continue
         if len(first_line) < 3:
             continue
@@ -690,6 +721,15 @@ def build_markdown(
             rf'^(?:PART|Part)\s+\d+\s*[:\.]?\s*\n?',
             rf'^{re.escape(section["title"])}\s*\n?',
         ]
+        # Single-number-style chapters (bare "9" on the page, subtitle on the
+        # next line) never spell out "Chapter 9" in the body text, so the
+        # pattern above never matches — leaving the bare subtitle duplicated
+        # as the first body line under the "## Chapter 9: Subtitle" heading.
+        # Strip that bare subtitle too.
+        if ":" in section["title"]:
+            subtitle = section["title"].split(":", 1)[1].strip()
+            if subtitle:
+                header_patterns.append(rf'^{re.escape(subtitle)}\s*\n?')
         for pat in header_patterns:
             full_text = re.sub(pat, '', full_text, count=1, flags=re.IGNORECASE).strip()
 

@@ -154,7 +154,7 @@ The most visible AI tell in longer prose is em dashes used as all-purpose connec
 
 Do this:
 - **Kill em dashes: zero in anything outgoing.** Michael's hard rule (2026-07-24): no em dashes at all in any document another person will read: emails, reports, proposals, invoices, everything. Replace with periods, commas, colons, parentheses, or by rewriting the sentence. Before finalizing, search the draft for "—" and clear every hit. (Internal-only notes may keep the occasional dash, but default to zero everywhere.)
-- Similarly reduce en dashes in ranges when words work: "10-12 weeks" becomes "10 to 12 weeks."
+- **Kill en dashes too: zero in anything outgoing.** Same rule, same reason. Spell out ranges with words instead of a dash character: "10-12 weeks" becomes "10 to 12 weeks." Before finalizing, search the draft for "–" as well as "—" and clear every hit.
 - Vary connectives. Instead of "X, which Y, which Z," break into separate sentences. **(Strunk Rule 16: keep related words together, but don't stack relative clauses.)**
 - Avoid "Moreover," "Furthermore," "In addition," "Additionally" at sentence starts. They signal a machine outlining, not a person thinking.
 
@@ -187,9 +187,11 @@ The previous nine passes remove what's wrong. This pass adds what's right.
 
 Do this:
 - Find one or two places where the author would naturally add a specific detail, aside, or opinion. Add it.
-- Look for abstractions and replace them with concrete nouns. "Stakeholders" becomes "Bill and Tony." "The system" becomes "the admin dashboard." **(Strunk Rule 12.)**
+- Look for abstractions and replace them with concrete nouns already established elsewhere in the piece or conversation. "Stakeholders" becomes "Bill and Tony" only if Bill and Tony are real people already named; "the system" becomes "the admin dashboard" only if that's the actual system. **(Strunk Rule 12.)**
 - If the piece should feel warm, put a warm sentence in. If confident, let one sentence land a confident claim without hedging.
 - Ask: does this read like it came from a human who cares about the topic and the reader? If not, something is still mechanical.
+
+**Never invent the specific.** This pass fixes vagueness by adding concreteness, not by making things up. Every number, name, date, or anecdote you add must come from the source material or the conversation, not from what would sound plausible. This matters most in reports, proposals, and anything with numbers: a fabricated specific is worse than the vague sentence it replaced. If no real specific is available, leave the honest abstraction in place rather than invent one, or ask the author for the detail.
 
 Don't overdo this pass. One or two human moments per page is plenty.
 
