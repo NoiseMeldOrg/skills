@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A Claude Code plugin marketplace publishing five skills for document extraction and prose editing. There is no application here — each "skill" is a `SKILL.md` (frontmatter + prose Claude reads at session start) plus, for the extraction skills, a single Python script Claude invokes via Bash. The repo's job is to ship those bundles and keep the marketplace manifest in sync.
+A skills repo, also published as a Claude Code plugin marketplace, for document extraction, prose editing, structured critique and multi-session project planning. There is no application here — each "skill" is a `SKILL.md` (frontmatter + prose Claude reads at session start) plus, for the extraction skills, a single Python script Claude invokes via Bash. The repo's job is to ship those bundles and keep the marketplace manifest in sync.
 
 ## Layout
 
@@ -47,10 +47,10 @@ Editing an extract script: each `extract_*.py` supports `--dry-run` for preview 
 
 Three install paths work today, no action needed to keep them working:
 - **Claude Code plugin marketplace** — users run `/plugin marketplace add NoiseMeldOrg/skills` then `/plugin install <name>@noisemeld-skills`. Reads `.claude-plugin/marketplace.json`, pins via its `version` field.
-- **`npx skills add`** — users run `npx skills add NoiseMeldOrg/skills@<skill> -g -y`. The CLI clones at HEAD and symlinks into `~/.claude/skills/`. No registry submission — any public repo with the right layout works.
-- **Symlink install** — documented in README; `ln -s` from a local clone into `~/.claude/skills/`. Updates via `git pull`.
+- **`npx skills add`** — users run `npx skills add NoiseMeldOrg/skills@<skill> -g -y`. The CLI clones at HEAD into `~/.agents/skills/` and links it for each agent it finds (including `~/.claude/skills/`). No registry submission — any public repo with the right layout works.
+- **Symlink install** — documented in README; `ln -s` from a local clone into `~/.agents/skills/` (the open-standard location), plus `~/.claude/skills/` for Claude Code unless that folder is already a symlink to it ([agentcanon](https://github.com/buildermethods/agentcanon)). Updates via `git pull`.
 
-**Anthropic's plugin directory** (`clau.de/plugin-directory-submission`) is a separate path that requires per-plugin submission, not per-marketplace. Each skill would need its own `.claude-plugin/plugin.json`, standalone README, and to pass Anthropic's review for the "Verified" badge. This is significant restructuring — five marketplace entries → five separately submittable plugins. Do not pursue until there's usage signal that justifies the work; the marketplace install path already covers the same users.
+**Anthropic's plugin directory** (`clau.de/plugin-directory-submission`) is a separate path that requires per-plugin submission, not per-marketplace. Each skill would need its own `.claude-plugin/plugin.json`, standalone README, and to pass Anthropic's review for the "Verified" badge. This is significant restructuring — one separately submittable plugin per marketplace entry. Do not pursue until there's usage signal that justifies the work; the marketplace install path already covers the same users.
 
 **mcpmarket.com** likely auto-crawls public plugin marketplaces, but the submission mechanism is undocumented from what's been verified. Let it index organically.
 

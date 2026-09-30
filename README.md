@@ -1,22 +1,54 @@
 # NoiseMeld Skills
 
-Agent skills for extracting documents, editing prose, and structured critique. Built on the [Agent Skills](https://agentskills.io) open standard, so they install cleanly into Claude Code, Cursor, Gemini CLI, Goose, OpenCode, Windsurf, and other compatible agents.
+Agent skills for extracting documents, editing prose, structured critique, and planning projects that span many agent sessions. Built on the [Agent Skills](https://agentskills.io) open standard, so they install cleanly into Claude Code, Codex, Cursor, Gemini CLI, Goose, OpenCode, Windsurf, and other compatible agents. Each skill is a folder under `skills/` with a `SKILL.md`.
 
 ## Installation
 
-### Skills CLI (cross-agent, recommended)
+`~/.agents/skills` is the standard home for global skills, and most agents read it directly. Claude Code reads `~/.claude/skills` instead; one symlink points it at the standard folder (see [agentcanon](https://github.com/buildermethods/agentcanon)). Every option below except the plugin marketplace installs into the standard folder.
 
-One install command, every supported agent picks it up:
+### Option 1: Skills CLI (recommended, updates itself)
 
 ```bash
-npx skills add https://github.com/NoiseMeldOrg/skills --skill extract-book
+npx skills add https://github.com/NoiseMeldOrg/skills --skill extract-book -g
 ```
 
-Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, `clear-and-concise-humanization`, or `accountability-panel`. Add `-g` to install globally, or omit for project-only.
+Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, `clear-and-concise-humanization`, `accountability-panel`, or `cycle-orchestration`. `-g` installs globally into `~/.agents/skills` and links it for every agent the CLI finds; leave it off to install into the current project only.
 
 Update later with `npx skills update`. List installed skills with `npx skills list`.
 
-### Claude Code plugin marketplace
+### Option 2: Ask your agent
+
+Paste this into any agent:
+
+```
+Install the skills from github.com/NoiseMeldOrg/skills into my global skills folder (~/.agents/skills), and make sure my agent can read that folder.
+```
+
+### Option 3: Clone and symlink
+
+Clone once, then link the skills you want into the standard folder:
+
+```bash
+git clone https://github.com/NoiseMeldOrg/skills.git ~/skills
+mkdir -p ~/.agents/skills
+
+ln -s ~/skills/skills/extract-book ~/.agents/skills/
+ln -s ~/skills/skills/extract-study ~/.agents/skills/
+ln -s ~/skills/skills/extract-transcript ~/.agents/skills/
+ln -s ~/skills/skills/extract-webpage ~/.agents/skills/
+ln -s ~/skills/skills/obscura-scraper-crawler ~/.agents/skills/
+ln -s ~/skills/skills/clear-and-concise-humanization ~/.agents/skills/
+ln -s ~/skills/skills/accountability-panel ~/.agents/skills/
+ln -s ~/skills/skills/cycle-orchestration ~/.agents/skills/
+```
+
+If you use Claude Code and `~/.claude/skills` is not already a symlink to `~/.agents/skills`, link each skill there too (`ln -s ~/skills/skills/extract-book ~/.claude/skills/`), or follow [agentcanon](https://github.com/buildermethods/agentcanon) to make the whole folder one symlink.
+
+Pull the repo to update. Symlinks pick up changes immediately, and skill names stay short (`/extract-book`, no namespace).
+
+**Note for `accountability-panel`:** the skill is meant to be customized. `personas.md` next to `SKILL.md` is where you replace the four shipped defaults with real people whose judgment you trust. If you symlink, edits land in this repo. To keep your customized `personas.md` private, copy the skill into `~/.agents/skills/accountability-panel/` instead of symlinking, and edit it there. See the privacy note at the bottom of `personas.md`.
+
+### Option 4: Claude Code plugin marketplace
 
 Register the marketplace once:
 
@@ -34,6 +66,7 @@ Install the skills you want:
 /plugin install obscura-scraper-crawler@noisemeld-skills
 /plugin install clear-and-concise-humanization@noisemeld-skills
 /plugin install accountability-panel@noisemeld-skills
+/plugin install cycle-orchestration@noisemeld-skills
 ```
 
 Or grab a bundle:
@@ -42,35 +75,18 @@ Or grab a bundle:
 /plugin install extraction-skills@noisemeld-skills    # all four extract skills
 ```
 
-Plugin skills are namespaced (`/noisemeld-skills:extract-book`) and available in every project.
-
-### Manual install (no namespace)
-
-Clone and symlink for shorter `/extract-book` names:
-
-```bash
-git clone https://github.com/NoiseMeldOrg/skills.git ~/skills
-
-ln -s ~/skills/skills/extract-book ~/.claude/skills/
-ln -s ~/skills/skills/extract-study ~/.claude/skills/
-ln -s ~/skills/skills/extract-transcript ~/.claude/skills/
-ln -s ~/skills/skills/extract-webpage ~/.claude/skills/
-ln -s ~/skills/skills/obscura-scraper-crawler ~/.claude/skills/
-ln -s ~/skills/skills/clear-and-concise-humanization ~/.claude/skills/
-ln -s ~/skills/skills/accountability-panel ~/.claude/skills/
-```
-
-**Note for `accountability-panel`:** the skill is meant to be customized — `personas.md` next to `SKILL.md` is where you replace the four shipped defaults with real people whose judgment you trust. If you symlink, edits land in this repo. If you'd rather keep your customized `personas.md` private, copy the skill into `~/.claude/skills/accountability-panel/` instead of symlinking and edit there. See the privacy note at the bottom of `personas.md`.
-
-Pull the repo to update. Symlinks pick up changes immediately.
+Plugin skills are namespaced (`/noisemeld-skills:extract-book`) and work in Claude Code only.
 
 ### Project-level install
 
 Add a skill to one project so your team gets it through version control:
 
 ```bash
-ln -s ~/skills/skills/extract-study /path/to/project/.claude/skills/
+mkdir -p /path/to/project/.agents/skills
+ln -s ~/skills/skills/extract-study /path/to/project/.agents/skills/
 ```
+
+For Claude Code, also point the project's `.claude/skills` at it: `ln -s ../.agents/skills /path/to/project/.claude/skills` (when the project has no `.claude/skills` folder yet).
 
 ### Python dependencies
 
@@ -210,6 +226,20 @@ No Python dependencies. Pure markdown — `SKILL.md` and `personas.md`.
 
 ---
 
+### cycle-orchestration
+
+Runs any job that needs more than one agent session as a dated "cycle": a new feature, a redesign, a strategy session, a piece of content. Plans live in files instead of one chat, so a fresh agent can pick up the work from a single sentence like "review the newest cycle and start phase 2."
+
+Each cycle gets a folder, `cycles/YYYY-MM-DD-short-name/`, with a living `summary.md` that the agents keep current: status, next step, decisions, and what went wrong. Small jobs stop there. Big jobs get a PRD and one folder per phase, each with a brief, a build log, a review by a separate reviewer agent, and screenshots where there is a screen. The agent stops after every phase and waits for your "go." Say "lock it" during planning and the decision is written to a file on the spot.
+
+For big jobs it calls `bm-prd-creator` from [Builder Methods' bm-skills](https://github.com/buildermethods/bm-skills) to write the PRD and phase prompts. Without it, the skill offers to write a lighter plan itself.
+
+Based on the planning method Brian Casel shows in [How I plan (large) projects with agents](https://www.youtube.com/watch?v=krhkmockjCM). His own "cycle orchestration" skill is not public; this is an independent version built from the video.
+
+No Python dependencies. Pure markdown: `SKILL.md`, eight step files, and templates for `summary.md` and the review report.
+
+---
+
 ## Making skills trigger reliably
 
 Claude tends to under-trigger skills. It knows they exist, but won't always reach for them unless you make the connection clear. Several things help.
@@ -340,6 +370,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, local testing, the version/cha
 ## Related skills
 
 Skills maintained outside this repo that pair well with it:
+
+- **[bm-skills](https://github.com/buildermethods/bm-skills)** by [Brian Casel](https://buildermethods.com) at Builder Methods: PRD Creator, Skill Builder, Design System and Favicon Creator. `cycle-orchestration` uses PRD Creator for big jobs, and Skill Builder is a good way to write new skills in this repo's style.
+
+  ```
+  /plugin marketplace add buildermethods/bm-skills
+  /plugin install bm-skills
+  ```
 
 - **[vibe-security](https://github.com/raroque/vibe-security-skill)** by [Chris Raroque](https://github.com/raroque) and Aloa — audits AI-generated code for common security vulnerabilities: hardcoded secrets, missing row-level security, client-submitted prices, tokens stored in localStorage, and six more categories. Covers secrets, database security, auth, rate limiting, payments, mobile, AI/LLM integration, deployment, and data access, each with before/after examples. MIT licensed. Works with Claude Code and OpenAI Codex.
 

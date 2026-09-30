@@ -5,8 +5,8 @@
     "email": "michael@noisemeld.com"
   },
   "metadata": {
-    "description": "Custom skills for document extraction and writing",
-    "version": "1.0.33"
+    "description": "Agent skills for document extraction, writing, critique and multi-session project planning",
+    "version": "1.0.34"
   },
   "plugins": [
     {
@@ -70,6 +70,15 @@
       "strict": false,
       "skills": [
         "./skills/obscura-scraper-crawler"
+      ]
+    },
+    {
+      "name": "cycle-orchestration",
+      "description": "Run any job that needs more than one agent session as a dated cycle: a cycle folder with a living summary.md, a PRD and phases for big builds (via bm-prd-creator), a separate reviewer agent for every phase, and a human go/no-go between phases. A fresh agent picks up from one sentence. No Python deps.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/cycle-orchestration"
       ]
     },
     {

@@ -16,13 +16,14 @@ The hooks auto-bump the version and regenerate `CHANGELOG.md` on every commit. S
 
 ## Testing a skill locally
 
-Symlink the skill into your global `~/.claude/skills/` directory:
+Symlink the skill into your global `~/.agents/skills/` directory, and into `~/.claude/skills/` if you test with Claude Code and that folder is not already a symlink to `~/.agents/skills/`:
 
 ```bash
-ln -s "$(pwd)/skills/extract-book" ~/.claude/skills/
+ln -s "$(pwd)/skills/extract-book" ~/.agents/skills/
+ln -s "$(pwd)/skills/extract-book" ~/.claude/skills/   # Claude Code only
 ```
 
-Start a new Claude Code session and the skill will load. Edits to `SKILL.md` or scripts take effect on the next skill invocation — no reinstall needed.
+Start a new agent session and the skill will load. Edits to `SKILL.md` or scripts take effect on the next skill invocation — no reinstall needed.
 
 For the Python-based extract skills, install the dependencies:
 

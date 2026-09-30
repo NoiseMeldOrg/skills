@@ -7,6 +7,15 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.34
+
+Add cycle-orchestration; install into ~/.agents/skills
+
+- - New skill: cycle-orchestration, dated cycle folders with a living summary.md, a PRD and phases for big jobs, a separate reviewer per phase, and a human go between phases
+- - README install rewritten around the open ~/.agents/skills location with an agentcanon link, plus an "ask your agent" option
+- - CONTRIBUTING and CLAUDE.md point local testing at ~/.agents/skills
+- - Related skills: Builder Methods bm-skills
+
 ## 1.0.33
 
 Test pass on every skill: transcript, webpage, obscura, book, study, humanization, panel
