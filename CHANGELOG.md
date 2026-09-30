@@ -7,6 +7,14 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.35
+
+Move agent instructions to AGENTS.md
+
+- AGENTS.md is the open standard that Codex, Cursor, Gemini CLI and Claude Code
+- all read. CLAUDE.md now imports it with @AGENTS.md so Claude loads the same
+- rules on every version and setting.
+
 ## 1.0.34
 
 Add cycle-orchestration; install into ~/.agents/skills
