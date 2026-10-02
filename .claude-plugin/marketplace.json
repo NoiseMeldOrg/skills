@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Agent skills for document extraction, writing, critique and multi-session project planning",
-    "version": "1.0.36"
+    "version": "1.0.37"
   },
   "plugins": [
     {

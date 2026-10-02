@@ -44,9 +44,14 @@ At the start, show this list with one short sentence per item, then begin step 1
 - **Every shared style is checked everywhere it is shared.** If several brands, tenants or themes share the styles, every screenshot set covers each of them.
 - **Write it down.** Decisions go in the cycle's `summary.md`; anything durable (tokens, fonts, rules) goes back into the repo's design docs at the end.
 
+## Script
+
+- `scripts/shoot_screens.py` takes the same screenshots every time: every screen, at every width and brand, signed in or signed out, from one `shots.json` config. It refuses non-local URLs unless told otherwise, and with `--manifest` it fills in `compare.html`. Run it with `uv run --with playwright python {SKILL_DIR}/scripts/shoot_screens.py ...` (first time on a machine: `uv run --with playwright playwright install chromium`). Use it for every before, after and fix shot; do not hand-take screenshots.
+
 ## Templates and references
 
-- `templates/compare.html` - the before-and-after review page. The agent fills in one JSON block; the page does the rest.
+- `templates/shots.json` - the screenshot config: variants (base URL, width, brand, embed query, sign-in), sign-in steps, and screens.
+- `templates/compare.html` - the before-and-after review page. The script fills in its JSON block; the page does the rest.
 - `templates/checklist.md` - the hands-on walkthrough for the local review.
 - `templates/goal.md` - the `/goal` text for an unattended run.
 - `references/review-kit.md` - what the review kit must do, including the local-database guard.

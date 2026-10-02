@@ -252,7 +252,7 @@ The review kit is the point. `compare.html` shows every screen before and after,
 
 You can run the phases attended, one session per phase, or unattended with Claude Code's `/goal` in auto mode; the skill writes the goal text, which stops before any push.
 
-Requires `cycle-orchestration`. Uses `bm-prd-creator` for the PRD and `impeccable` for the design passes when they are installed. No Python dependencies: `SKILL.md`, five step files, a review-kit reference, and templates for the compare page, the checklist and the goal.
+Requires `cycle-orchestration`. Uses `bm-prd-creator` for the PRD and `impeccable` for the design passes when they are installed. Ships `scripts/shoot_screens.py`, which takes every screenshot the same way (every screen, width and brand, signed in or out) from one `shots.json` and fills in the compare page. It needs Playwright; run it with `uv run --with playwright python ...` and install the browser once with `uv run --with playwright playwright install chromium`.
 
 ---
 

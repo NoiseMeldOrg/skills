@@ -1,12 +1,28 @@
 # The review kit
 
-Built in the cycle folder, `cycles/<cycle>/review/`, never in app code. Three files. The user approves the redesign from these, so test them as carefully as the redesign itself.
+Built in the cycle folder, `cycles/<cycle>/review/`, never in app code. Four files: the screenshot config, the compare page, the run script and the checklist. The user approves the redesign from these, so test them as carefully as the redesign itself.
+
+## 0. shots.json and the screenshot script
+
+Start from `templates/shots.json` and save it as `review/shots.json` in phase 1, before the first code change. List one variant per brand and width (390 px phone, 820 px tablet, and the native-shell embed query if the app has one), the sign-in steps (values as `env:NAME`, never real passwords in the file), and every screen with a stable `id`, `group`, `name`, `path`, optional `waitFor` and `actions`, `signedOut: true` for sign-in and password screens, and one or two `changed` lines (fill these in as the work lands).
+
+Then, with the app running locally:
+
+```bash
+S={SKILL_DIR}/scripts/shoot_screens.py
+uv run --with playwright python $S review/shots.json --label before --dry-run   # check the plan
+uv run --with playwright python $S review/shots.json --label before            # from the starting commit
+uv run --with playwright python $S review/shots.json --label after             # from the branch head
+uv run --with playwright python $S review/shots.json --manifest review/compare.html
+```
+
+Re-shoot one screen after a fix with `--only <screen-id> --label after`, then rebuild the manifest. On macOS the first run may show an "allow incoming connections" dialog for Python; allow it, or the local server times out.
 
 ## 1. compare.html
 
-Start from `templates/compare.html`. Fill in only the JSON block at the top (`<script id="manifest" type="application/json">`); the page renders everything from it, and it opens straight from disk with no server.
+`--manifest` copies `templates/compare.html` into place if it is missing and fills in only its JSON block (`<script id="manifest" type="application/json">`); the page renders everything from it and opens straight from disk with no server. Phone shots display at their real device width.
 
-Manifest fields:
+Manifest fields (written by the script; edit by hand only if needed):
 
 - `title`, `cycle`: shown in the header. `cycle` also keys the saved review state, so use the cycle folder name.
 - `notice` (optional): one line shown under the header, for example "Ask cannot answer locally; its after shots come from the live demo."

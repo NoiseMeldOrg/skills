@@ -1,0 +1,24 @@
+{
+  "title": "Design polish review",
+  "cycle": "YYYY-MM-DD-design-polish",
+  "notice": "",
+  "outDir": "screenshots",
+  "variants": [
+    { "id": "a-390", "label": "Brand A, phone", "baseUrl": "http://localhost:3000", "width": 390, "height": 844, "login": "staff" },
+    { "id": "a-820", "label": "Brand A, tablet", "baseUrl": "http://localhost:3000", "width": 820, "height": 1180, "login": "staff" },
+    { "id": "a-app", "label": "Brand A, inside the phone app", "baseUrl": "http://localhost:3000", "width": 390, "height": 844, "query": "embed=mobile", "login": "staff" }
+  ],
+  "logins": {
+    "staff": [
+      { "goto": "/login" },
+      { "fill": "input[name=email]", "value": "env:REVIEW_EMAIL" },
+      { "fill": "input[name=password]", "value": "env:REVIEW_PASSWORD" },
+      { "click": "button[type=submit]" },
+      { "waitForUrl": "^(?!.*login).*$" }
+    ]
+  },
+  "screens": [
+    { "id": "sign-in", "group": "Sign-in", "name": "Sign-in", "path": "/login", "signedOut": true, "changed": [] },
+    { "id": "home", "group": "Home", "name": "Home", "path": "/", "changed": [] }
+  ]
+}

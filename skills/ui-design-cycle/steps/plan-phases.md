@@ -18,7 +18,7 @@ Patch each `phases/N-slug/prompt.md` (written by bm-prd-creator) so the Context 
 - **Skills**: the repo's frontend skill, `impeccable`, `clear-and-concise-humanization`.
 - **Exact files**: the theme file, the layout file, and the view files for this phase's screens, with the hard-coded color counts from the audit.
 - **The branch**: work on the cycle branch (for example `design-polish`), never main.
-- **Before shots first**: at phone width (390 px) and any other target widths (tablet 820 px, wide 1180 px), inside any native-shell embed mode, for every brand, saved in the phase's `screenshots/` before the first edit. Matching "after" shots at the end.
+- **Before shots first**: phase 1 writes `review/shots.json` (see `references/review-kit.md`) and runs `scripts/shoot_screens.py --label before` against the starting commit before the first edit, covering every screen of every phase, so the before set is complete even for screens changed later. Each phase re-shoots its screens with `--label after` when done.
 - **Checks**: the build and type check (compare the error count to the starting count, add none), the tests against a local test database only, and updated look-pinning tests (change the expected values on purpose; never delete the check).
 - **Gotchas from the audit**: service worker caches to bump after CSS changes, files that must not be committed, environment values that point at production.
 - **No push, no deploy**: commit in small commits on the branch; stop for the user.

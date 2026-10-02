@@ -7,6 +7,16 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.37
+
+ui-design-cycle: add shoot_screens.py for repeatable before and after screenshots
+
+- - One shots.json config: variants (URL, width, embed query, sign-in), sign-in steps, screens
+- - Signed-out screens get a fresh session; env:NAME values are never printed
+- - Refuses non-local URLs unless --allow-remote; --dry-run lists the plan
+- - --manifest fills compare.html; phone shots now display at device width
+- - Tested end to end on a local test app: 12 shots, approve/flag/notes persist, flip view, no page errors
+
 ## 1.0.36
 
 Add ui-design-cycle: UI polish as a cycle with a before-and-after review kit

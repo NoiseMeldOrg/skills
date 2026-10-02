@@ -14,8 +14,8 @@
   "cycle": "YYYY-MM-DD-design-polish",
   "notice": "",
   "variants": [
-    { "id": "a-390", "label": "Brand A, phone" },
-    { "id": "a-820", "label": "Brand A, tablet" }
+    { "id": "a-390", "label": "Brand A, phone", "width": 390 },
+    { "id": "a-820", "label": "Brand A, tablet", "width": 820 }
   ],
   "screens": [
     {
@@ -103,7 +103,7 @@
   try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
   var filter = 'all', variantPick = '', flip = false;
-  var labels = {}; (M.variants || []).forEach(function (v) { labels[v.id] = v.label; });
+  var labels = {}, widths = {}; (M.variants || []).forEach(function (v) { labels[v.id] = v.label; if (v.width) widths[v.id] = v.width; });
   var broken = [];
 
   document.getElementById('title').textContent = M.title || 'Before and after review';
@@ -115,9 +115,10 @@
   function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
   function st(id) { return state[id] || { status: '', note: '' }; }
 
-  function img(src, alt, cls) {
+  function img(src, alt, cls, w) {
     if (!src) return el('div', 'missing', 'No image');
     var i = el('img', cls || ''); i.src = src; i.alt = alt; i.loading = 'lazy';
+    if (w) i.style.maxWidth = 'min(100%, ' + w + 'px)';
     i.addEventListener('error', function () { broken.push(src); showBroken(); });
     return i;
   }
@@ -160,7 +161,7 @@
         if (flip) {
           var fig = el('figure'); var cap = el('figcaption', '', 'After (click to see before)');
           var showing = 'after';
-          var im = img(pair.after, s.name + ' after', 'flipimg');
+          var im = img(pair.after, s.name + ' after', 'flipimg', widths[vid]);
           im.onclick = function () {
             showing = showing === 'after' ? 'before' : 'after';
             im.src = pair[showing] || ''; cap.textContent = (showing === 'after' ? 'After' : 'Before') + ' (click to swap)';
@@ -169,7 +170,7 @@
         } else {
           ['before', 'after'].forEach(function (k) {
             var f = el('figure'); f.appendChild(el('figcaption', '', k === 'before' ? 'Before' : 'After'));
-            f.appendChild(img(pair[k], s.name + ' ' + k)); grid.appendChild(f);
+            f.appendChild(img(pair[k], s.name + ' ' + k, '', widths[vid])); grid.appendChild(f);
           });
         }
         box.appendChild(grid); card.appendChild(box);
