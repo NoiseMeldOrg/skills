@@ -12,7 +12,7 @@ Agent skills for extracting documents, editing prose, structured critique, and p
 npx skills add https://github.com/NoiseMeldOrg/skills --skill extract-book -g
 ```
 
-Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, `clear-and-concise-humanization`, `accountability-panel`, or `cycle-orchestration`. `-g` installs globally into `~/.agents/skills` and links it for every agent the CLI finds; leave it off to install into the current project only.
+Swap `extract-book` for `extract-study`, `extract-transcript`, `extract-webpage`, `obscura-scraper-crawler`, `clear-and-concise-humanization`, `accountability-panel`, `cycle-orchestration`, or `ui-design-cycle`. `-g` installs globally into `~/.agents/skills` and links it for every agent the CLI finds; leave it off to install into the current project only.
 
 Update later with `npx skills update`. List installed skills with `npx skills list`.
 
@@ -40,6 +40,7 @@ ln -s ~/skills/skills/obscura-scraper-crawler ~/.agents/skills/
 ln -s ~/skills/skills/clear-and-concise-humanization ~/.agents/skills/
 ln -s ~/skills/skills/accountability-panel ~/.agents/skills/
 ln -s ~/skills/skills/cycle-orchestration ~/.agents/skills/
+ln -s ~/skills/skills/ui-design-cycle ~/.agents/skills/
 ```
 
 If you use Claude Code and `~/.claude/skills` is not already a symlink to `~/.agents/skills`, link each skill there too (`ln -s ~/skills/skills/extract-book ~/.claude/skills/`), or follow [agentcanon](https://github.com/buildermethods/agentcanon) to make the whole folder one symlink.
@@ -67,6 +68,7 @@ Install the skills you want:
 /plugin install clear-and-concise-humanization@noisemeld-skills
 /plugin install accountability-panel@noisemeld-skills
 /plugin install cycle-orchestration@noisemeld-skills
+/plugin install ui-design-cycle@noisemeld-skills
 ```
 
 Or grab a bundle:
@@ -237,6 +239,20 @@ For big jobs it calls `bm-prd-creator` from [Builder Methods' bm-skills](https:/
 Based on the planning method Brian Casel shows in [How I plan (large) projects with agents](https://www.youtube.com/watch?v=krhkmockjCM). His own "cycle orchestration" skill is not public; this is an independent version built from the video.
 
 No Python dependencies. Pure markdown: `SKILL.md`, eight step files, and templates for `summary.md` and the review report.
+
+---
+
+### ui-design-cycle
+
+Runs a UI polish or redesign of an existing app as a cycle, so an agent can restyle many screens to a high standard without you losing control of what ships. It changes how the app looks, never what it does.
+
+It starts with an audit of the real code (fonts, colors, hard-coded values, theme mode, shared brands, every screen) before asking any design question. Then it locks the look one decision at a time: which screens first, font, colors, shape, dark mode, and what is out of scope. Phases follow a standard shape: foundation and first-impression screens, the rest of the user screens plus a review kit, then admin screens to match. Work happens on a branch, and nothing is pushed or deployed until you have reviewed it.
+
+The review kit is the point. `compare.html` shows every screen before and after, side by side or flipped in place, for each brand and screen width, with Approve and Flag buttons and a "Copy review notes" button that hands your flags back to the agent. `run-local.sh` runs the original and new apps side by side on your machine against local databases only, and refuses to start if a database URL points anywhere else. `checklist.md` is the hands-on walkthrough.
+
+You can run the phases attended, one session per phase, or unattended with Claude Code's `/goal` in auto mode; the skill writes the goal text, which stops before any push.
+
+Requires `cycle-orchestration`. Uses `bm-prd-creator` for the PRD and `impeccable` for the design passes when they are installed. No Python dependencies: `SKILL.md`, five step files, a review-kit reference, and templates for the compare page, the checklist and the goal.
 
 ---
 

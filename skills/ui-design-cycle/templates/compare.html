@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Before and after review</title>
+<!--
+  UI design cycle review page. Fill in ONLY the JSON block below.
+  Image paths are relative to this file. Open the file straight from disk.
+-->
+<script id="manifest" type="application/json">
+{
+  "title": "Design polish review",
+  "cycle": "YYYY-MM-DD-design-polish",
+  "notice": "",
+  "variants": [
+    { "id": "a-390", "label": "Brand A, phone" },
+    { "id": "a-820", "label": "Brand A, tablet" }
+  ],
+  "screens": [
+    {
+      "id": "sign-in",
+      "group": "Sign-in",
+      "name": "Sign-in",
+      "changed": ["Example: logo smaller so the form fits on a small phone."],
+      "shots": {
+        "a-390": { "before": "screenshots/a-390/sign-in-before.png", "after": "screenshots/a-390/sign-in-after.png" }
+      }
+    }
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg: #f6f6f4; --card: #ffffff; --ink: #2b2a29; --muted: #67645f; --line: #d9d6d0;
+    --ok: #1f7a4d; --ok-bg: #e6f4ec; --flag: #b4321f; --flag-bg: #fbeae6; --accent: #2b2a29;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: rgba(246,246,244,.95); border-bottom: 1px solid var(--line); padding: 12px 16px; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .counts { display: flex; gap: 12px; font-size: 14px; }
+  .counts b { font-variant-numeric: tabular-nums; }
+  button, select { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+  button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .notice { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .broken { margin-top: 8px; font-size: 13px; color: var(--flag); }
+  main { padding: 20px 0 60px; }
+  .group-title { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 28px 0 10px; }
+  .screen { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+  .screen.approved { border-color: var(--ok); }
+  .screen.flagged { border-color: var(--flag); }
+  .head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+  .head h3 { margin: 0; font-size: 17px; }
+  .changed { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+  .actions { display: flex; gap: 6px; align-items: flex-start; }
+  .actions .ok[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); }
+  .actions .fl[aria-pressed="true"] { background: var(--flag); border-color: var(--flag); }
+  .variant { margin-top: 14px; }
+  .variant-label { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pair.flip { grid-template-columns: 1fr; max-width: 640px; }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+  .flipimg { cursor: pointer; }
+  .missing { font-size: 13px; color: var(--muted); border: 1px dashed var(--line); border-radius: 4px; padding: 24px; text-align: center; }
+  textarea { width: 100%; margin-top: 12px; min-height: 52px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 4px; padding: 8px; }
+  .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 4px; font-size: 14px; }
+  @media (max-width: 700px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1 id="title"></h1>
+    <div class="sub" id="cycle"></div>
+    <div class="bar">
+      <div class="counts"><span>Approved <b id="n-ok">0</b></span><span>Flagged <b id="n-fl">0</b></span><span>Not reviewed <b id="n-un">0</b></span></div>
+      <span style="flex:1"></span>
+      <button data-filter="all" aria-pressed="true">All</button>
+      <button data-filter="flagged" aria-pressed="false">Flagged</button>
+      <button data-filter="unreviewed" aria-pressed="false">Not reviewed</button>
+      <select id="variant-pick" aria-label="Show variant"><option value="">Every variant</option></select>
+      <button id="mode" aria-pressed="false" title="Show before and after in one spot; click the image to swap">Flip view</button>
+      <button id="copy">Copy review notes</button>
+    </div>
+    <div class="notice" id="notice" hidden></div>
+    <div class="broken" id="broken" hidden></div>
+  </div>
+</header>
+<main class="wrap" id="list"></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  var M = JSON.parse(document.getElementById('manifest').textContent);
+  var KEY = 'ui-review:' + (M.cycle || M.title || 'cycle');
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var filter = 'all', variantPick = '', flip = false;
+  var labels = {}; (M.variants || []).forEach(function (v) { labels[v.id] = v.label; });
+  var broken = [];
+
+  document.getElementById('title').textContent = M.title || 'Before and after review';
+  document.getElementById('cycle').textContent = M.cycle ? 'Cycle ' + M.cycle : '';
+  if (M.notice) { var n = document.getElementById('notice'); n.textContent = M.notice; n.hidden = false; }
+  var pick = document.getElementById('variant-pick');
+  (M.variants || []).forEach(function (v) { var o = document.createElement('option'); o.value = v.id; o.textContent = v.label; pick.appendChild(o); });
+
+  function el(tag, cls, text) { var x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+  function st(id) { return state[id] || { status: '', note: '' }; }
+
+  function img(src, alt, cls) {
+    if (!src) return el('div', 'missing', 'No image');
+    var i = el('img', cls || ''); i.src = src; i.alt = alt; i.loading = 'lazy';
+    i.addEventListener('error', function () { broken.push(src); showBroken(); });
+    return i;
+  }
+  function showBroken() {
+    var b = document.getElementById('broken');
+    var uniq = broken.filter(function (s, k) { return broken.indexOf(s) === k; });
+    b.textContent = uniq.length + ' image(s) failed to load: ' + uniq.join(', ');
+    b.hidden = uniq.length === 0;
+  }
+
+  function render() {
+    var list = document.getElementById('list'); list.innerHTML = '';
+    var lastGroup = null;
+    (M.screens || []).forEach(function (s) {
+      var s0 = st(s.id);
+      if (filter === 'flagged' && s0.status !== 'flagged') return;
+      if (filter === 'unreviewed' && s0.status) return;
+      var shots = s.shots || {};
+      var vids = Object.keys(shots).filter(function (v) { return !variantPick || v === variantPick; });
+      if (!vids.length) return;
+      if (s.group !== lastGroup) { list.appendChild(el('div', 'group-title', s.group || '')); lastGroup = s.group; }
+      var card = el('section', 'screen' + (s0.status ? ' ' + s0.status : ''));
+      var head = el('div', 'head');
+      var left = el('div'); left.appendChild(el('h3', '', s.name));
+      if (s.changed && s.changed.length) { var ul = el('ul', 'changed'); s.changed.forEach(function (c) { ul.appendChild(el('li', '', c)); }); left.appendChild(ul); }
+      var act = el('div', 'actions');
+      var ok = el('button', 'ok', 'Approve'), fl = el('button', 'fl', 'Flag');
+      ok.setAttribute('aria-pressed', String(s0.status === 'approved'));
+      fl.setAttribute('aria-pressed', String(s0.status === 'flagged'));
+      ok.onclick = function () { setStatus(s.id, 'approved'); };
+      fl.onclick = function () { setStatus(s.id, 'flagged'); };
+      act.appendChild(ok); act.appendChild(fl);
+      head.appendChild(left); head.appendChild(act); card.appendChild(head);
+
+      vids.forEach(function (vid) {
+        var pair = shots[vid] || {};
+        var box = el('div', 'variant');
+        box.appendChild(el('div', 'variant-label', labels[vid] || vid));
+        var grid = el('div', 'pair' + (flip ? ' flip' : ''));
+        if (flip) {
+          var fig = el('figure'); var cap = el('figcaption', '', 'After (click to see before)');
+          var showing = 'after';
+          var im = img(pair.after, s.name + ' after', 'flipimg');
+          im.onclick = function () {
+            showing = showing === 'after' ? 'before' : 'after';
+            im.src = pair[showing] || ''; cap.textContent = (showing === 'after' ? 'After' : 'Before') + ' (click to swap)';
+          };
+          fig.appendChild(cap); fig.appendChild(im); grid.appendChild(fig);
+        } else {
+          ['before', 'after'].forEach(function (k) {
+            var f = el('figure'); f.appendChild(el('figcaption', '', k === 'before' ? 'Before' : 'After'));
+            f.appendChild(img(pair[k], s.name + ' ' + k)); grid.appendChild(f);
+          });
+        }
+        box.appendChild(grid); card.appendChild(box);
+      });
+
+      var ta = el('textarea'); ta.placeholder = 'Note (what to change, or why it is fine)'; ta.value = s0.note || '';
+      ta.addEventListener('input', function () { var x = st(s.id); x.note = ta.value; state[s.id] = x; save(); });
+      card.appendChild(ta);
+      list.appendChild(card);
+    });
+    if (!list.children.length) list.appendChild(el('p', 'sub', 'Nothing to show for this filter.'));
+    counts();
+  }
+
+  function setStatus(id, status) { var x = st(id); x.status = x.status === status ? '' : status; state[id] = x; save(); render(); }
+  function counts() {
+    var a = 0, f = 0, u = 0;
+    (M.screens || []).forEach(function (s) { var x = st(s.id).status; if (x === 'approved') a++; else if (x === 'flagged') f++; else u++; });
+    document.getElementById('n-ok').textContent = a; document.getElementById('n-fl').textContent = f; document.getElementById('n-un').textContent = u;
+  }
+  function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; setTimeout(function () { t.hidden = true; }, 2200); }
+
+  document.querySelectorAll('[data-filter]').forEach(function (b) {
+    b.onclick = function () {
+      filter = b.getAttribute('data-filter');
+      document.querySelectorAll('[data-filter]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      render();
+    };
+  });
+  pick.onchange = function () { variantPick = pick.value; render(); };
+  document.getElementById('mode').onclick = function () { flip = !flip; this.setAttribute('aria-pressed', String(flip)); render(); };
+  document.getElementById('copy').onclick = function () {
+    var lines = ['Review notes: ' + (M.title || '') + (M.cycle ? ' (' + M.cycle + ')' : ''), ''];
+    var a = 0, f = 0, u = 0;
+    (M.screens || []).forEach(function (s) {
+      var x = st(s.id);
+      if (x.status === 'approved') a++; else if (x.status === 'flagged') f++; else u++;
+      if (x.status === 'flagged' || (x.note && x.note.trim())) {
+        lines.push('- ' + (x.status === 'flagged' ? 'FLAG' : (x.status === 'approved' ? 'OK' : 'NOT REVIEWED')) + ': ' + s.group + ' / ' + s.name + (x.note && x.note.trim() ? ': ' + x.note.trim() : ''));
+      }
+    });
+    lines.splice(1, 0, 'Approved ' + a + ', flagged ' + f + ', not reviewed ' + u);
+    var text = lines.join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast('Copied. Paste it to Claude.'); }, function () { window.prompt('Copy these notes:', text); });
+    } else { window.prompt('Copy these notes:', text); }
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

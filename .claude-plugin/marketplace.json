@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Agent skills for document extraction, writing, critique and multi-session project planning",
-    "version": "1.0.35"
+    "version": "1.0.36"
   },
   "plugins": [
     {
@@ -79,6 +79,15 @@
       "strict": false,
       "skills": [
         "./skills/cycle-orchestration"
+      ]
+    },
+    {
+      "name": "ui-design-cycle",
+      "description": "Run a UI polish or redesign of an existing app as a cycle: audit the current look, lock the design decisions, build on a branch (optionally unattended with /goal), then review every screen before and after with a compare page and the old and new apps running side by side locally, and push only after approval. Builds on cycle-orchestration. No Python deps.",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/ui-design-cycle"
       ]
     },
     {

@@ -7,6 +7,16 @@ git log --oneline main   # find the commit
 git checkout <hash>      # check it out
 ```
 
+## 1.0.36
+
+Add ui-design-cycle: UI polish as a cycle with a before-and-after review kit
+
+- - Audit the current look before any design decision
+- - Lock font, colors, shape, dark mode and scope one decision at a time
+- - Standard three-phase shape; work on a branch, never push before review
+- - Review kit: compare.html (approve/flag, copy notes), run-local.sh spec with a local-database guard, checklist
+- - Optional unattended run with /goal in auto mode
+
 ## 1.0.35
 
 Move agent instructions to AGENTS.md
